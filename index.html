@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eedad5">
+  <meta name="description" content="Nanda Boutique: moda feminina escolhida com carinho. Explore a coleção, monte sua sacola e converse com a loja pelo WhatsApp.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; media-src 'self' https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Nanda Boutique | Bonita. Sempre.</title>
+  <link rel="icon" href="./img/logo-nanda.jpg">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <div id="inicio" aria-hidden="true"></div>
+  <a class="skip-link" href="#colecao">Pular para os produtos</a>
+  <div class="cherry-arch" aria-hidden="true">
+    <div class="cherry-side cherry-side-left"><img src="./img/cerejeira-direita.png" alt="" width="283" height="512"></div>
+    <div class="cherry-side cherry-side-right"><img src="./img/cerejeira-direita.png" alt="" width="283" height="512"></div>
+  </div>
+  <div class="falling-scene" id="fallingScene" aria-hidden="true"></div>
+  <div class="butterfly-scene" aria-hidden="true">
+    <div class="flying-butterfly butterfly-one"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"><span class="butterfly-cargo">👜</span></div>
+    <div class="flying-butterfly butterfly-two"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"><span class="butterfly-cargo">👚</span></div>
+    <div class="flying-butterfly butterfly-three"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"><span class="butterfly-cargo">💍</span></div>
+    <div class="flying-butterfly butterfly-four"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"><span class="butterfly-cargo">👖</span></div>
+  </div>
+  <div class="flight-layer" id="flightLayer" aria-hidden="true"></div>
+  <button class="admin-toggle" id="adminToggle" type="button" aria-label="Abrir painel da Nanda" aria-controls="adminModal" aria-haspopup="dialog" title="Painel da Nanda" hidden>✎</button>
+
+  <header class="store-header">
+    <div class="header-inner container">
+      <button class="account-toggle" id="accountToggle" type="button" aria-controls="loginModal" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg><span id="accountLabel">Entrar / Cadastrar</span></button>
+      <a class="brand" href="#inicio" aria-label="Nanda Boutique, início">
+        <img class="brand-logo" src="./img/logo-nanda.jpg" alt="Logo oficial da Nanda Boutique" width="1080" height="1080">
+        <span class="brand-copy"><span class="brand-name">Nanda <span>Boutique</span></span><span class="brand-caption">@usenandaboutique</span></span>
+      </a>
+      <nav class="store-nav" aria-label="Navegação principal">
+        <a href="#inicio">Início</a><a href="#colecao">Coleção</a><a href="#sobre">Nossa História</a><a href="#avaliacoes">Avaliações</a><a href="#informacoes">Informações</a><a href="#contatos">Contatos</a>
+      </nav>
+      <button class="shopping-bag" id="shoppingBag" type="button" aria-label="Abrir sacola: 0 itens" aria-controls="checkoutModal" aria-haspopup="dialog">
+        <img src="./img/sacola-carrinho.png" alt="" width="60" height="66"><span class="bag-label">Sacola</span><span id="bagCount" class="bag-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container" id="conteudo">
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> UM NOVO LOOK. O SEU JEITO.</p>
+        <h1 id="heroTitle" data-edit-key="heroTitle" data-edit-label="Título de boas-vindas" data-edit-type="text">Vista o que faz<br>você se sentir<br><em>bonita. Sempre.</em></h1>
+        <p class="hero-description" data-edit-key="heroDescription" data-edit-label="Apresentação da boutique" data-edit-type="text">Peças escolhidas com carinho para acompanhar seus dias. Encontre o look que combina com você.</p>
+        <div class="hero-actions">
+          <a class="primary-btn" href="#colecao">Explorar a coleção <span aria-hidden="true">↓</span></a>
+          <a class="social-link" href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer" aria-label="Fale com a Loja pelo WhatsApp (abre em nova aba)"><img src="./img/icon-whatsapp.png" alt="" width="28" height="28"><span>Fale com a Loja</span><span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="hero-note">De Osasco, com carinho, para todo o Brasil.</p>
+      </div>
+      <div class="hero-editorial">
+        <figure class="editorial-photo editorial-main"><img src="./img/look-listras-rosa-1.jpg" alt="Look com blusa rosa e calça listrada da coleção Nanda Boutique" width="587" height="801" fetchpriority="high" data-edit-key="heroMainImage" data-edit-label="Foto principal" data-edit-type="image"><figcaption>Leveza para vestir. <span>Confiança para ser.</span></figcaption></figure>
+        <figure class="editorial-photo editorial-detail"><img src="./img/conjunto-renda-3.jpg" alt="Detalhes da camisa de renda preta da coleção" width="512" height="808" loading="lazy" data-edit-key="heroDetailImage" data-edit-label="Foto de detalhes" data-edit-type="image"><figcaption>Encanto nos detalhes</figcaption></figure>
+        <span class="editorial-label">ESCOLHIDOS COM AMOR</span>
+      </div>
+    </section>
+    <div class="store-benefits" aria-label="Compre com tranquilidade"><p><span class="benefit-symbol" aria-hidden="true">♡</span> Atendimento de perto</p><p><span class="benefit-symbol" aria-hidden="true">↗</span> Enviamos para todo o Brasil</p><p><span class="benefit-symbol" aria-hidden="true">✧</span> Cada detalhe, com carinho</p></div>
+    <p class="storage-notice" id="storageNotice" role="status" hidden>Não foi possível salvar neste navegador. As alterações ficam disponíveis apenas nesta aba enquanto ela estiver aberta.</p>
+    <section class="catalog" id="colecao" aria-labelledby="catalogTitle" tabindex="-1">
+      <div class="section-heading"><div><p class="eyebrow">SUA PRÓXIMA PEÇA FAVORITA</p><h2 id="catalogTitle" data-edit-key="catalogTitle" data-edit-label="Título da coleção" data-edit-type="text">Conheça a coleção</h2><p>Seu próximo look começa com uma peça que é a sua cara.</p></div></div>
+      <nav class="category-nav" aria-label="Filtrar produtos por categoria">
+        <button class="category-btn" type="button" data-category="Todos os Looks" aria-pressed="true" aria-controls="productsGrid">Todos os Looks</button>
+        <button class="category-btn" type="button" data-category="Calças &amp; Shorts" aria-pressed="false" aria-controls="productsGrid">Calças &amp; Shorts</button>
+        <button class="category-btn" type="button" data-category="Conjuntos &amp; Macacões" aria-pressed="false" aria-controls="productsGrid">Conjuntos &amp; Macacões</button>
+        <button class="category-btn" type="button" data-category="Bolsas &amp; Acessórios" aria-pressed="false" aria-controls="productsGrid">Bolsas &amp; Acessórios</button>
+      </nav>
+      <p class="catalog-status" id="catalogStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="products-grid" id="productsGrid"></div>
+      <div class="collection-empty" id="collectionEmpty" hidden><span aria-hidden="true">♡</span><h3>Nova coleção sendo preparada. Aguarde novidades!</h3><p>Estamos escolhendo cada detalhe com carinho para você.</p></div>
+      <noscript><p class="noscript-message">Ative o JavaScript para explorar a coleção. Você também pode falar com a loja pelo <a href="https://wa.me/5511989423365">WhatsApp</a>.</p></noscript>
+      <aside class="catalog-help" aria-label="Atendimento da loja"><span>Uma ajudinha para escolher seu próximo look?</span><a href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer"><img src="./img/icon-whatsapp.png" alt="" width="24" height="24">Dúvidas? Fale com a loja <span aria-hidden="true">↗</span></a></aside>
+    </section>
+    <section class="about" id="sobre" aria-labelledby="aboutTitle">
+      <div class="about-brand"><img src="./img/logo-nanda.jpg" alt="Nanda Boutique" width="140" height="140" loading="lazy" data-edit-key="storyImage" data-edit-label="Foto da nossa história" data-edit-type="image"><p data-edit-key="storyCaption" data-edit-label="Legenda da nossa história" data-edit-type="text">Um sonho que virou boutique.</p></div>
+      <div><p class="eyebrow">MUITO PRAZER, SOMOS A NANDA BOUTIQUE</p><h2 id="aboutTitle" data-edit-key="storyTitle" data-edit-label="Título da nossa história" data-edit-type="text">Mais do que vestir.<br>É sobre se sentir especial.</h2><p id="storyText" data-edit-key="story" data-edit-label="Nossa história" data-edit-type="text">Após 23 anos no mercado financeiro, a Nanda Boutique nasceu de um sonho. Nosso propósito é acolher, ouvir histórias e fazer com que cada mulher se sinta especial e linda.</p><p class="about-signature">Bonita. Sempre.</p></div>
+    </section>
+    <section class="reviews-section" id="avaliacoes" aria-labelledby="reviewsTitle">
+      <div class="section-heading"><div><p class="eyebrow">CARINHO QUE VOLTA</p><h2 id="reviewsTitle">Avaliações das clientes</h2><p>Cada experiência tem um lugar especial por aqui.</p></div><button class="secondary-btn" id="writeReview" type="button" aria-controls="reviewModal" aria-haspopup="dialog">Deixar uma avaliação</button></div>
+      <div class="reviews-empty" id="reviewsEmpty"><span aria-hidden="true">♡</span><p>Ainda não há avaliações neste navegador. Conte como foi sua experiência com a Nanda.</p></div>
+      <div class="review-track" id="reviewTrack" role="region" aria-label="Avaliações das clientes" tabindex="0" hidden></div>
+      <div class="review-navigation" id="reviewNavigation" hidden><button class="icon-btn" id="reviewPrevious" type="button" aria-label="Avaliação anterior">‹</button><p id="reviewPosition" role="status" aria-live="polite"></p><button class="icon-btn" id="reviewNext" type="button" aria-label="Próxima avaliação">›</button></div>
+      <p class="section-note">As avaliações desta versão ficam salvas neste navegador.</p>
+    </section>
+    <section class="store-info" id="informacoes" aria-labelledby="infoTitle">
+      <div class="section-heading"><div><p class="eyebrow">VAMOS NOS CONHECER?</p><h2 id="infoTitle" data-edit-key="infoTitle" data-edit-label="Título das informações" data-edit-type="text">A boutique está de portas abertas</h2></div></div>
+      <div class="info-grid">
+        <article class="info-card"><div class="info-art info-art-brand"><img src="./img/logo-nanda.jpg" alt="" width="1080" height="1080" loading="lazy" data-edit-key="addressImage" data-edit-label="Foto da loja" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">01 / NOSSO CANTINHO</span><h3>Venha nos visitar</h3><address id="addressText" data-edit-key="address" data-edit-label="Endereço da loja" data-edit-type="text">Av. Antônio Carlos Costa, 1065<br>Jd. Bela Vista, Osasco – SP</address></div></article>
+        <article class="info-card"><div class="info-art info-art-look"><img src="./img/look-listras-rosa-2.jpg" alt="" width="587" height="801" loading="lazy" data-edit-key="hoursImage" data-edit-label="Foto dos horários" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">02 / UM TEMPO PARA VOCÊ</span><h3>Nossos horários</h3><p id="hoursText" data-edit-key="hours" data-edit-label="Horários de atendimento" data-edit-type="text">Terça a sexta: 10h às 18h<br>Sábado: 9h ao meio-dia</p></div></article>
+        <article class="info-card"><div class="info-art info-art-accessories"><img src="./img/cintos-colecao-1.jpg" alt="" width="587" height="801" loading="lazy" data-edit-key="paymentImage" data-edit-label="Foto de pagamento" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">03 / DO SEU JEITO</span><h3>Pagamento facilitado</h3><p id="paymentText" data-edit-key="payment" data-edit-label="Informações de pagamento" data-edit-type="text">Pix, dinheiro, cartão de débito ou crédito.</p></div></article>
+        <article class="info-card" id="frete"><div class="info-art info-art-bag"><img src="./img/sacola-carrinho.png" alt="" width="500" height="500" loading="lazy" data-edit-key="deliveryImage" data-edit-label="Foto das entregas" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">04 / ATÉ A SUA CASA</span><h3>Entrega com carinho</h3><p id="deliveryText" data-edit-key="delivery" data-edit-label="Entregas e frete" data-edit-type="text">Osasco: frete fixo de R$ 10,00.<br>São Paulo e demais estados: valor a consultar.</p></div></article>
+      </div>
+    </section>
+  </main>
+  <footer class="footer" id="contatos" aria-labelledby="contactTitle">
+    <div class="footer-inner container">
+      <div class="footer-identity"><p class="footer-brand">Nanda Boutique</p><p class="footer-motto">Bonita. Sempre.</p><p>Fernanda Evangelista Garcia</p><p class="section-note">Seu estilo. Sua essência. Seu momento.</p></div>
+      <div class="footer-socials">
+        <h2 id="contactTitle" data-edit-key="contactTitle" data-edit-label="Título dos contatos" data-edit-type="text">Contatos</h2>
+        <div class="contact-line"><a class="social-link" href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp da Nanda Boutique"><img src="./img/icon-whatsapp.png" alt="" width="32" height="32"><span id="contactPhoneText" data-edit-key="contactPhone" data-edit-label="WhatsApp da loja" data-edit-type="phone">(11) 98942-3365</span><span aria-hidden="true">↗</span></a></div>
+        <div class="contact-line"><a class="social-link" href="https://www.instagram.com/usenandaboutique" target="_blank" rel="noopener noreferrer"><img src="./img/icon-instagram.png" alt="" width="32" height="32"><span id="contactInstagramText" data-edit-key="contactInstagram" data-edit-label="Instagram da loja" data-edit-type="instagram">@usenandaboutique</span><span aria-hidden="true">↗</span></a></div>
+        <a class="footer-link" href="#avaliacoes">Avaliações das Clientes</a>
+      </div>
+      <div class="footer-bag-scene" aria-hidden="true"><span>👗</span><span>👠</span><span>🌸</span><img src="./img/sacola-carrinho.png" alt="" width="120" height="132" loading="lazy"></div>
+      <p class="footer-note">© <span id="year">2026</span> Nanda Boutique · Moda feminina, com afeto.</p><a class="back-top" href="#inicio">Início ↑</a>
+    </div>
+  </footer>
+
+  <dialog class="boutique-modal login-modal" id="loginModal" aria-labelledby="loginTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O SEU CANTINHO</p><h2 id="loginTitle">Bem-vinda à Nanda</h2></div><button class="icon-btn" type="button" data-close="loginModal" aria-label="Fechar conta">×</button></header>
+      <p class="account-intro">Seu estilo, suas escolhas e um atendimento cheio de carinho.</p>
+      <div id="accountSession" class="account-session" hidden><p id="accountSessionLabel"></p><div class="form-actions"><button class="primary-btn" id="accountAdmin" type="button" hidden>✎ Painel da Nanda</button><button class="secondary-btn" id="accountLogout" type="button">Sair da conta</button></div></div>
+      <div id="accountForms">
+        <div class="auth-tabs" role="tablist" aria-label="Acesso à conta"><button type="button" role="tab" id="loginTab" data-auth-tab="login" aria-selected="true" aria-controls="loginPanel">Entrar</button><button type="button" role="tab" id="registerTab" data-auth-tab="register" aria-selected="false" aria-controls="registerPanel" tabindex="-1">Criar Conta</button></div>
+        <div id="loginPanel" role="tabpanel" aria-labelledby="loginTab"><form id="loginForm" class="stack-form"><label for="adminUsername">Usuário ou e-mail</label><input id="adminUsername" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254" autofocus><label for="adminPassword">Senha</label><input id="adminPassword" type="password" autocomplete="current-password" required maxlength="128"><p class="form-error" id="loginError" role="alert" hidden></p><button class="primary-btn" id="loginSubmit" type="submit">Entrar</button></form></div>
+        <div id="registerPanel" role="tabpanel" aria-labelledby="registerTab" hidden><form id="registerForm" class="stack-form"><label for="registerName">Nome</label><input id="registerName" autocomplete="name" required minlength="2" maxlength="100"><label for="registerEmail">E-mail</label><input id="registerEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254"><label for="registerCPF">CPF</label><input id="registerCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00"><label for="registerPassword">Senha</label><input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="registerPasswordHint"><p id="registerPasswordHint" class="field-hint">Use pelo menos 8 caracteres.</p><p id="registerError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Criar minha conta</button></form></div>
+      </div>
+      <button class="anonymous-continue text-button" id="anonymousContinue" type="button">Continuar sem cadastro (Anônimo)</button>
+      <p class="field-hint account-note">Cadastro em demonstração local, sem autenticação em servidor. Use dados de teste.</p>
+    </div>
+  </dialog>
+
+  <dialog class="boutique-modal admin-modal" id="adminModal" aria-labelledby="adminTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">CADA DETALHE, DO SEU JEITO</p><h2 id="adminTitle">Painel da Nanda</h2></div><button class="icon-btn" type="button" data-close="adminModal" aria-label="Fechar painel da Nanda" autofocus>×</button></header>
+      <p class="local-note">As mudanças ficam salvas somente neste navegador. Elas não atualizam a coleção em outros aparelhos.</p>
+      <p class="form-status" id="adminStatus" role="status" aria-live="polite"></p>
+      <section class="admin-section" aria-labelledby="productFormTitle"><h3 id="productFormTitle">Adicionar novo produto</h3>
+        <form id="productForm" class="form-grid"><input id="editingProductId" type="hidden">
+          <div class="field full-width"><label for="productName">Nome da peça</label><input id="productName" required maxlength="100"></div>
+          <div class="field full-width"><label for="productMedia">URL da foto ou vídeo</label><textarea id="productMedia" rows="3" required maxlength="16000" aria-describedby="mediaHint" placeholder="./img/nome-da-foto.jpg"></textarea><p class="field-hint" id="mediaHint">Até 8 mídias, uma por linha. Use ./img/arquivo.jpg ou um link HTTPS direto de imagem ou vídeo MP4/WebM.</p></div>
+          <div class="field"><label for="productMediaType">Tipo de mídia</label><select id="productMediaType" aria-describedby="mediaTypeHint"><option value="auto">Identificar pelo arquivo</option><option value="image">Foto</option><option value="video">Vídeo</option></select><p class="field-hint" id="mediaTypeHint">Para links sem extensão, escolha Foto ou Vídeo. Vídeos têm controles e começam somente ao tocar.</p></div>
+          <div class="field full-width"><label for="productDescription">Descrição da peça</label><textarea id="productDescription" rows="3" maxlength="800" aria-describedby="descriptionHint"></textarea><p class="field-hint" id="descriptionHint">Conte os detalhes de tecido, caimento e acabamento que aparecem no card.</p></div>
+          <div class="field"><label for="productCategory">Categoria</label><select id="productCategory"><option>Conjuntos &amp; Macacões</option><option>Calças &amp; Shorts</option><option>Bolsas &amp; Acessórios</option></select></div>
+          <div class="field"><label for="productSizes">Tamanhos</label><input id="productSizes" required maxlength="100" placeholder="Ex.: P, M, G ou Único" aria-describedby="sizesHint"><p class="field-hint" id="sizesHint">Separe os tamanhos por vírgula, como 36, 38, 40. Para acessórios, use Único.</p></div>
+          <div class="field"><label for="productUnavailableSizes">Tamanhos indisponíveis</label><input id="productUnavailableSizes" maxlength="100" placeholder="Ex.: P, G" aria-describedby="unavailableSizesHint"><p class="field-hint" id="unavailableSizesHint">Separe por vírgula somente os tamanhos que estão sem estoque.</p></div>
+          <div class="field"><label for="productPrice">Preço (R$)</label><input id="productPrice" inputmode="decimal" maxlength="12" placeholder="Ex.: 169,90" aria-describedby="priceHint"><p class="field-hint" id="priceHint">O preço aparece no card. Deixe vazio para informar “Consulte o valor”.</p></div>
+          <label class="checkbox-field"><input id="productSoldOut" type="checkbox"> Marcar como esgotado</label>
+          <p class="form-error full-width" id="productError" role="alert" hidden></p><div class="form-actions full-width"><button class="primary-btn" id="saveProduct" type="submit">Adicionar produto</button><button class="secondary-btn" id="cancelProductEdit" type="button" hidden>Cancelar edição</button></div>
+        </form>
+      </section>
+      <section class="admin-section" aria-labelledby="manageTitle"><h3 id="manageTitle">Gerenciar coleção</h3><ul class="admin-products" id="adminProducts"></ul><div class="delete-prompt" id="deletePrompt" hidden><p id="deletePromptText"></p><div class="form-actions"><button class="primary-btn" id="confirmDelete" type="button">Excluir produto</button><button class="secondary-btn" id="cancelDelete" type="button">Manter produto</button></div></div></section>
+      <section class="admin-section" aria-labelledby="storyFormTitle"><h3 id="storyFormTitle">Nossa história</h3><form id="storyForm" class="stack-form"><label for="adminStory">Texto da história</label><textarea id="adminStory" rows="6" required maxlength="4000"></textarea><button class="secondary-btn" type="submit">Salvar história</button></form></section>
+      <button class="text-button" id="adminLogout" type="button">Sair do modo administrador</button>
+    </div>
+  </dialog>
+
+  <dialog class="boutique-modal" id="contentEditorModal" aria-labelledby="contentEditorTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O TOQUE DA NANDA</p><h2 id="contentEditorTitle">Editar conteúdo</h2></div><button class="icon-btn" type="button" data-close="contentEditorModal" aria-label="Fechar edição">×</button></header>
+      <form id="contentEditorForm" class="stack-form"><label id="contentEditorLabel" for="contentEditorValue">Conteúdo</label><textarea id="contentEditorValue" rows="5" required maxlength="4000"></textarea><p id="contentEditorError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Salvar alterações</button></form>
+    </div>
+  </dialog>
+
+  <dialog class="boutique-modal" id="reviewModal" aria-labelledby="reviewTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">VAMOS GUARDAR ESSE CARINHO?</p><h2 id="reviewTitle">Sua experiência</h2></div><button class="icon-btn" type="button" data-close="reviewModal" aria-label="Fechar avaliação">×</button></header>
+      <form id="reviewForm" class="stack-form"><label for="reviewEmail">Seu e-mail</label><input id="reviewEmail" type="email" autocomplete="email" required maxlength="254" aria-describedby="reviewEmailHint"><p class="field-hint" id="reviewEmailHint">Uma avaliação por e-mail. Só as estrelas e o comentário ficam visíveis.</p><label for="reviewCPF">CPF</label><input id="reviewCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00" aria-describedby="reviewCPFHint"><p class="field-hint" id="reviewCPFHint">Campo reservado à futura validação de clientes. Nesta demonstração local, use dados de teste.</p>
+        <fieldset class="rating-field"><legend>Como foi sua experiência?</legend><div class="rating-options"><label><input type="radio" name="rating" value="1" required><span>1 ★</span></label><label><input type="radio" name="rating" value="2"><span>2 ★</span></label><label><input type="radio" name="rating" value="3"><span>3 ★</span></label><label><input type="radio" name="rating" value="4"><span>4 ★</span></label><label><input type="radio" name="rating" value="5"><span>5 ★</span></label></div></fieldset>
+        <label for="reviewComment">Seu comentário de carinho</label><textarea id="reviewComment" rows="4" required minlength="3" maxlength="600" placeholder="Conte o que mais gostou na sua experiência."></textarea><p class="form-error" id="reviewError" role="alert" hidden></p><button class="primary-btn" type="submit">Salvar minha avaliação</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog class="checkout-modal boutique-modal" id="checkoutModal" aria-labelledby="checkoutTitle" aria-describedby="checkoutHint">
+    <div class="checkout-layout"><header class="checkout-header"><div><p class="eyebrow">SUAS ESCOLHAS, COM CARINHO</p><h2 id="checkoutTitle">Minha sacola</h2></div><button class="icon-btn" id="closeCheckout" type="button" data-close="checkoutModal" aria-label="Fechar sacola" autofocus>×</button></header>
+      <p id="checkoutHint">Confira suas peças, tamanhos e forma de pagamento. A Nanda confirma a disponibilidade com você pelo WhatsApp.</p><p class="visually-hidden" id="cartStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="empty-cart" id="emptyCart"><img src="./img/sacola-carrinho.png" alt="" width="76" height="80"><h3>Sua sacola espera por um novo look.</h3><p>Explore a coleção e escolha suas peças favoritas.</p><button class="secondary-btn" id="continueShopping" type="button">Ver a coleção</button></div>
+      <ul class="cart-items" id="cartItems"></ul>
+      <footer class="checkout-footer" id="checkoutSummary" hidden><p class="cart-count-summary" id="cartCountSummary"></p><div class="payment-step" id="paymentStep"><label for="paymentMethod">Forma de Pagamento <span class="payment-required">Obrigatório</span></label><p class="payment-hint" id="paymentHint">Escolha sua preferência para enviar a lista à Nanda.</p><select class="payment-select" id="paymentMethod" required aria-describedby="paymentHint"><option value="">Escolha uma opção</option><option value="Pix">Pix</option><option value="Cartão de Crédito">Cartão de Crédito</option><option value="Cartão de Débito">Débito</option><option value="Dinheiro">Dinheiro</option></select><p class="payment-error" id="paymentError" role="alert" hidden>Por favor, selecione como deseja pagar para enviarmos sua lista para a Nanda.</p></div>
+        <a class="primary-btn checkout-btn" id="checkoutButton" role="button" tabindex="0" target="_blank" rel="noopener noreferrer" aria-describedby="checkoutNewTab"><img src="./img/icon-whatsapp.png" alt="" width="28" height="28"><span class="checkout-label">Finalizar no WhatsApp</span><span aria-hidden="true">↗</span></a><p id="checkoutNewTab">Abre o WhatsApp em uma nova aba. Revise e envie sua lista para confirmar a disponibilidade com a loja.</p>
+      </footer>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

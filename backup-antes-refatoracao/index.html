@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#FFF6F8">
+  <meta name="description" content="Nanda Boutique — Moda feminina elegante. Faça seu pedido pelo WhatsApp.">
+  <title>Nanda Boutique | Moda feminina elegante</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="media.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="petals" aria-hidden="true"><div class="petals-layer petals-near"></div><div class="petals-layer petals-far"></div></div>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <div class="boutique">
+    <header class="store-header" id="inicio">
+      <a class="brand" href="#inicio" aria-label="Nanda Boutique — início">
+        <div class="avatar"><span aria-hidden="true">NB</span><img src="./img/logo-nanda.jpg" alt="Logo Nanda Boutique" width="64" height="64"></div>
+        <div><span class="brand-name">Nanda Boutique</span><span class="brand-caption">Moda feminina elegante</span></div>
+      </a>
+      <nav class="store-nav" aria-label="Navegação principal">
+        <a href="#colecao">Coleção</a>
+        <a href="#sobre">A boutique</a>
+        <a href="#informacoes">Informações</a>
+        <a href="https://wa.me/5511989423365">WhatsApp <span aria-hidden="true">↗</span></a>
+      </nav>
+      <button class="shopping-bag" id="shoppingBag" type="button" aria-label="Abrir sacola" aria-haspopup="dialog"><img src="./img/sacola-carrinho.png" alt="" width="32" height="32"><span id="bagCount">0</span></button>
+    </header>
+    <main id="conteudo">
+      <noscript><p class="empty-cart">Ative o JavaScript para visualizar a coleção ou fale pelo <a href="https://wa.me/5511989423365">WhatsApp</a>.</p></noscript>
+      <section class="profile" aria-labelledby="profileTitle">
+        <div class="profile-copy">
+          <img class="hero-mascot" src="./img/logo-borboleta-animada.png" alt="" width="72" height="72">
+          <p class="eyebrow">Nanda Boutique · Nova coleção</p>
+          <h1 id="profileTitle">Elegância, delicadeza e sofisticação em cada detalhe.</h1>
+          <p class="bio">A Nanda Boutique foi criada para mulheres que amam se vestir bem, com peças modernas, sofisticadas e delicadas.</p>
+        </div>
+        <div class="profile-actions">
+          <a class="primary-btn" href="#colecao">Ver coleção <span aria-hidden="true">↓</span></a>
+          <a class="instagram-link" href="https://www.instagram.com/usenandaboutique?utm_source=ig_web_button_share_sheet&amp;igsi=ZDNlZDc0MzIxNw==">@usenandaboutique <span aria-hidden="true">↗</span></a>
+        </div>
+        <button class="motion-toggle" id="motionToggle" type="button" aria-pressed="false">Pausar animações</button>
+      </section>
+      <section class="collection-empty" id="collectionEmpty" aria-labelledby="emptyTitle" hidden>
+        <p class="eyebrow">Um novo capítulo de delicadeza</p>
+        <img src="./img/logo-borboleta-animada.png" width="100" height="100" alt="">
+        <h2 id="emptyTitle">Nova coleção sendo preparada. Aguarde novidades!</h2>
+        <p>Peças especiais, escolhidas com carinho para você.</p>
+        <a class="instagram-link" href="https://www.instagram.com/usenandaboutique">Acompanhe no Instagram <span aria-hidden="true">↗</span></a>
+      </section>
+      <section class="catalog" id="colecao" aria-labelledby="catalogTitle" hidden>
+        <div class="section-heading">
+          <p class="eyebrow">Nova coleção</p>
+          <h2 id="catalogTitle">Lançamentos da coleção</h2>
+          <p>Explore as peças da boutique.</p>
+        </div>
+        <nav class="category-nav" aria-label="Filtrar produtos por categoria">
+          <button class="category-btn" type="button" data-category="Todos" aria-pressed="true" aria-controls="productsGrid">Todos</button>
+          <button class="category-btn" type="button" data-category="Vestidos" aria-pressed="false" aria-controls="productsGrid">Vestidos</button>
+          <button class="category-btn" type="button" data-category="Conjuntos &amp; Macacões" aria-pressed="false" aria-controls="productsGrid">Conjuntos &amp; Macacões</button>
+          <button class="category-btn" type="button" data-category="Blusas &amp; Bodys" aria-pressed="false" aria-controls="productsGrid">Blusas &amp; Bodys</button>
+          <button class="category-btn" type="button" data-category="Calças &amp; Shorts" aria-pressed="false" aria-controls="productsGrid">Calças &amp; Shorts</button>
+          <button class="category-btn" type="button" data-category="Saias" aria-pressed="false" aria-controls="productsGrid">Saias</button>
+          <button class="category-btn" type="button" data-category="Bolsas &amp; Acessórios" aria-pressed="false" aria-controls="productsGrid">Bolsas &amp; Acessórios</button>
+        </nav>
+        <p class="catalog-status" id="catalogStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="products-grid" id="productsGrid"></div>
+        <noscript><p class="empty-cart">Ative o JavaScript para montar seu carrinho ou faça seu pedido pelo <a href="https://wa.me/5511989423365">WhatsApp</a>.</p></noscript>
+      </section>
+      <section class="about" id="sobre" aria-labelledby="aboutTitle">
+        <h2 id="aboutTitle">Sobre a Nanda Boutique</h2>
+        <p>Após 23 anos no mercado financeiro, a Nanda Boutique nasceu de um sonho. Mais do que moda, nosso propósito é acolher, ouvir histórias e fazer com que cada mulher se sinta especial e linda. Bonita. Sempre.</p>
+      </section>
+      <section class="store-info" id="informacoes" aria-labelledby="infoTitle">
+        <div class="section-heading">
+          <p class="eyebrow">Pertinho de você</p>
+          <h2 id="infoTitle">Informações da boutique</h2>
+        </div>
+        <div class="info-grid">
+          <article class="info-card">
+            <h3>Endereço</h3>
+            <address>Av. Antônio Carlos Costa, 1065 - Jd. Bela Vista, Osasco-SP</address>
+          </article>
+          <article class="info-card">
+            <h3>Horário de Funcionamento</h3>
+            <p>Terça a Sexta: das 10h às 18h</p>
+            <p>Sábados: das 09h ao meio-dia</p>
+          </article>
+          <article class="info-card">
+            <h3>Formas de Pagamento</h3>
+            <p>Pix, Dinheiro, Cartão de Débito ou Crédito.</p>
+          </article>
+          <article class="info-card">
+            <h3>Entregas e Frete</h3>
+            <p>Frete fixo para Osasco: R$ 10,00</p>
+            <p>Para São Paulo e demais estados: Taxa a consultar (Enviamos para todo o Brasil).</p>
+          </article>
+        </div>
+      </section>
+    </main>
+    <footer class="footer"><p>Nanda Boutique</p><a class="instagram-link" href="https://www.instagram.com/usenandaboutique?utm_source=ig_web_button_share_sheet&amp;igsi=ZDNlZDc0MzIxNw=="><img src="./img/icon-instagram.png" alt="" width="28" height="28"> @usenandaboutique <span aria-hidden="true">↗</span></a></footer>
+  </div>
+  <aside class="cart-bar" id="cartBar" aria-label="Resumo do carrinho" hidden>
+    <div class="cart-bar-summary" role="status" aria-live="polite" aria-atomic="true"><span id="cartCount">0 itens</span><strong id="cartTotal">R$ 0,00</strong><small id="shippingNote">Escolha a entrega no pedido</small></div>
+    <button class="primary-btn" id="viewOrder" type="button" aria-haspopup="dialog">Ver Pedido <span aria-hidden="true">→</span></button>
+  </aside>
+  <dialog class="checkout-modal" id="checkoutModal" aria-labelledby="checkoutTitle" aria-describedby="checkoutHint">
+    <div class="checkout-layout">
+      <header class="checkout-header">
+        <div><p class="eyebrow">Nanda Boutique</p><h2 id="checkoutTitle">Seu carrinho</h2></div>
+        <button class="icon-btn" id="closeCheckout" type="button" aria-label="Fechar pedido" autofocus>×</button>
+      </header>
+      <p id="checkoutHint">Confira suas peças e ajuste as quantidades.</p>
+      <ul class="cart-items" id="cartItems"></ul>
+      <p class="empty-cart" id="emptyCart" hidden>Seu carrinho está vazio.</p>
+      <fieldset class="checkout-options" id="deliveryOptions" disabled>
+        <legend>Como você quer receber?</legend>
+        <label for="deliverySelect">Opção de entrega</label>
+        <select id="deliverySelect" aria-describedby="deliveryHint" required>
+          <option value="">Selecione a entrega</option>
+          <option value="osasco">Frete Osasco — R$ 10,00</option>
+          <option value="other">São Paulo e demais estados — Taxa a consultar</option>
+        </select>
+        <p id="deliveryHint">Escolha uma opção para continuar. Enviamos para todo o Brasil.</p>
+      </fieldset>
+      <fieldset class="checkout-options" id="paymentOptions" disabled>
+        <legend>Como você prefere pagar?</legend>
+        <label for="paymentSelect">Forma de pagamento</label>
+        <select id="paymentSelect" aria-describedby="paymentHint" required>
+          <option value="">Selecione o pagamento</option>
+          <option value="pix">Pix</option>
+          <option value="cash">Dinheiro</option>
+          <option value="debit">Cartão de Débito</option>
+          <option value="credit">Cartão de Crédito</option>
+        </select>
+        <p id="paymentHint">Escolha a forma de pagamento para finalizar seu pedido pelo WhatsApp.</p>
+      </fieldset>
+      <footer class="checkout-footer">
+        <div class="summary-row"><span>Subtotal dos produtos</span><span id="productsSubtotal">R$ 0,00</span></div>
+        <div class="summary-row"><span>Frete</span><span id="shippingValue">Selecione a entrega</span></div>
+        <div class="total-row"><span id="totalLabel">Total dos produtos</span><strong id="checkoutTotal" aria-live="polite" aria-atomic="true">R$ 0,00</strong></div>
+        <p class="payment-note">Formas de pagamento: Pix, Dinheiro, Cartão de Débito ou Crédito.</p>
+        <button class="checkout-btn" id="checkoutButton" type="button" disabled>Finalizar pelo WhatsApp</button>
+        <p>Você será direcionada ao WhatsApp para concluir seu pedido.</p>
+      </footer>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <a class="floating-whatsapp" href="https://wa.me/5511989423365" aria-label="Falar com a Nanda Boutique pelo WhatsApp"><img src="./img/icon-whatsapp.png" alt="" width="38" height="38"></a>
+</body>
+</html>

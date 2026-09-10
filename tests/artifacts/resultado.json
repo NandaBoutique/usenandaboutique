@@ -1,0 +1,29 @@
+{
+  "ranAt": "2026-09-10T00:17:03.144Z",
+  "failures": [
+    "quatro borboletas com carga, pétalas e entrega do produto sem interceptar cliques: Expected values to be strictly equal:\n\n4 !== 0\n",
+    "responsividade de 320 a 1920 px, foco e decorações deixam os controles clicáveis: Expected values to be strictly equal:\n+ actual - expected\n\n+ 'shoppingBag'\n- 'accountToggle'\n",
+    "capturas finais e ausência de erros de JavaScript ou recursos locais: nenhuma mensagem ou navegação ao WhatsApp\n+ actual - expected\n\n+ [\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   }\n+ ]\n- []\n"
+  ],
+  "browserErrors": [],
+  "screenshots": [
+    "borboleta-entrega.png",
+    "conta-320.png",
+    "conta-390.png",
+    "conta-768.png",
+    "desktop-colecao.png",
+    "desktop-contatos.png",
+    "desktop-informacoes.png",
+    "desktop-topo.png",
+    "mobile-colecao.png",
+    "mobile-contatos.png",
+    "mobile-informacoes.png",
+    "mobile-sacola.png",
+    "mobile-topo.png",
+    "sacola-pagamento.png",
+    "tablet-colecao.png",
+    "tablet-contatos.png",
+    "tablet-informacoes.png",
+    "tablet-topo.png"
+  ]
+}
