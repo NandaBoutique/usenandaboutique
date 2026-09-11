@@ -6,11 +6,22 @@
   <meta name="theme-color" content="#eedad5">
   <meta name="description" content="Nanda Boutique: moda feminina escolhida com carinho. Explore a coleção, monte sua sacola e converse com a loja pelo WhatsApp.">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; media-src 'self' https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Nanda Boutique">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob: data:; media-src 'self' https: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Nanda Boutique | Bonita. Sempre.</title>
   <link rel="icon" href="./img/logo-nanda.jpg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./img/pwa-icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./img/pwa-icon-512.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
+  <script src="./config.js" defer></script>
+  <script src="./auth.js" defer></script>
   <script src="./script.js" defer></script>
+  <script src="./pwa.js" defer></script>
 </head>
 <body>
   <div id="inicio" aria-hidden="true"></div>
@@ -31,15 +42,15 @@
 
   <header class="store-header">
     <div class="header-inner container">
-      <button class="account-toggle" id="accountToggle" type="button" aria-controls="loginModal" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg><span id="accountLabel">Entrar / Cadastrar</span></button>
+      <button class="account-toggle" id="accountToggle" type="button" aria-controls="loginModal" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2"></path></svg><span id="accountLabel">Entrar</span></button>
       <a class="brand" href="#inicio" aria-label="Nanda Boutique, início">
         <img class="brand-logo" src="./img/logo-nanda.jpg" alt="Logo oficial da Nanda Boutique" width="1080" height="1080">
-        <span class="brand-copy"><span class="brand-name">Nanda <span>Boutique</span></span><span class="brand-caption">@usenandaboutique</span></span>
+        <span class="brand-copy"><span class="brand-name" data-edit-key="storeName" data-edit-label="Nome da loja" data-edit-type="text">Nanda <span>Boutique</span></span><span class="brand-caption">@usenandaboutique</span></span>
       </a>
       <nav class="store-nav" aria-label="Navegação principal">
         <a href="#inicio">Início</a><a href="#colecao">Coleção</a><a href="#sobre">Nossa História</a><a href="#avaliacoes">Avaliações</a><a href="#informacoes">Informações</a><a href="#contatos">Contatos</a>
       </nav>
-      <button class="shopping-bag" id="shoppingBag" type="button" aria-label="Abrir sacola: 0 itens" aria-controls="checkoutModal" aria-haspopup="dialog">
+      <button class="shopping-bag bag-highlight" id="shoppingBag" type="button" aria-label="Abrir sacola: 0 itens" aria-controls="checkoutModal" aria-haspopup="dialog">
         <img src="./img/sacola-carrinho.png" alt="" width="60" height="66"><span class="bag-label">Sacola</span><span id="bagCount" class="bag-count">0</span>
       </button>
     </div>
@@ -66,7 +77,7 @@
     <div class="store-benefits" aria-label="Compre com tranquilidade"><p><span class="benefit-symbol" aria-hidden="true">♡</span> Atendimento de perto</p><p><span class="benefit-symbol" aria-hidden="true">↗</span> Enviamos para todo o Brasil</p><p><span class="benefit-symbol" aria-hidden="true">✧</span> Cada detalhe, com carinho</p></div>
     <p class="storage-notice" id="storageNotice" role="status" hidden>Não foi possível salvar neste navegador. As alterações ficam disponíveis apenas nesta aba enquanto ela estiver aberta.</p>
     <section class="catalog" id="colecao" aria-labelledby="catalogTitle" tabindex="-1">
-      <div class="section-heading"><div><p class="eyebrow">SUA PRÓXIMA PEÇA FAVORITA</p><h2 id="catalogTitle" data-edit-key="catalogTitle" data-edit-label="Título da coleção" data-edit-type="text">Conheça a coleção</h2><p>Seu próximo look começa com uma peça que é a sua cara.</p></div></div>
+      <div class="section-heading"><div><p class="eyebrow">SUA PRÓXIMA PEÇA FAVORITA</p><h2 id="catalogTitle" data-edit-key="catalogTitle" data-edit-label="Título da coleção" data-edit-type="text">Conheça a coleção</h2><p>Seu próximo look começa com uma peça que é a sua cara.</p></div><button class="primary-btn admin-add-product" id="adminAddProduct" type="button" aria-controls="adminModal" aria-haspopup="dialog" hidden><span aria-hidden="true">＋</span>Adicionar Novo Produto</button></div>
       <nav class="category-nav" aria-label="Filtrar produtos por categoria">
         <button class="category-btn" type="button" data-category="Todos os Looks" aria-pressed="true" aria-controls="productsGrid">Todos os Looks</button>
         <button class="category-btn" type="button" data-category="Calças &amp; Shorts" aria-pressed="false" aria-controls="productsGrid">Calças &amp; Shorts</button>
@@ -85,10 +96,10 @@
     </section>
     <section class="reviews-section" id="avaliacoes" aria-labelledby="reviewsTitle">
       <div class="section-heading"><div><p class="eyebrow">CARINHO QUE VOLTA</p><h2 id="reviewsTitle">Avaliações das clientes</h2><p>Cada experiência tem um lugar especial por aqui.</p></div><button class="secondary-btn" id="writeReview" type="button" aria-controls="reviewModal" aria-haspopup="dialog">Deixar uma avaliação</button></div>
-      <div class="reviews-empty" id="reviewsEmpty"><span aria-hidden="true">♡</span><p>Ainda não há avaliações neste navegador. Conte como foi sua experiência com a Nanda.</p></div>
+      <div class="reviews-empty" id="reviewsEmpty"><span aria-hidden="true">♡</span><p>Ainda não há avaliações. Conte como foi sua experiência com a Nanda.</p></div>
       <div class="review-track" id="reviewTrack" role="region" aria-label="Avaliações das clientes" tabindex="0" hidden></div>
       <div class="review-navigation" id="reviewNavigation" hidden><button class="icon-btn" id="reviewPrevious" type="button" aria-label="Avaliação anterior">‹</button><p id="reviewPosition" role="status" aria-live="polite"></p><button class="icon-btn" id="reviewNext" type="button" aria-label="Próxima avaliação">›</button></div>
-      <p class="section-note">As avaliações desta versão ficam salvas neste navegador.</p>
+      <p class="section-note">Entre na sua conta para compartilhar sua experiência.</p>
     </section>
     <section class="store-info" id="informacoes" aria-labelledby="infoTitle">
       <div class="section-heading"><div><p class="eyebrow">VAMOS NOS CONHECER?</p><h2 id="infoTitle" data-edit-key="infoTitle" data-edit-label="Título das informações" data-edit-type="text">A boutique está de portas abertas</h2></div></div>
@@ -102,12 +113,13 @@
   </main>
   <footer class="footer" id="contatos" aria-labelledby="contactTitle">
     <div class="footer-inner container">
-      <div class="footer-identity"><p class="footer-brand">Nanda Boutique</p><p class="footer-motto">Bonita. Sempre.</p><p>Fernanda Evangelista Garcia</p><p class="section-note">Seu estilo. Sua essência. Seu momento.</p></div>
+      <div class="footer-identity"><p class="footer-brand" data-edit-key="footerName" data-edit-label="Nome da loja no rodapé" data-edit-type="text">Nanda Boutique</p><p class="footer-motto">Bonita. Sempre.</p><p>Fernanda Evangelista Garcia</p><p class="section-note">Seu estilo. Sua essência. Seu momento.</p></div>
       <div class="footer-socials">
         <h2 id="contactTitle" data-edit-key="contactTitle" data-edit-label="Título dos contatos" data-edit-type="text">Contatos</h2>
         <div class="contact-line"><a class="social-link" href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp da Nanda Boutique"><img src="./img/icon-whatsapp.png" alt="" width="32" height="32"><span id="contactPhoneText" data-edit-key="contactPhone" data-edit-label="WhatsApp da loja" data-edit-type="phone">(11) 98942-3365</span><span aria-hidden="true">↗</span></a></div>
         <div class="contact-line"><a class="social-link" href="https://www.instagram.com/usenandaboutique" target="_blank" rel="noopener noreferrer"><img src="./img/icon-instagram.png" alt="" width="32" height="32"><span id="contactInstagramText" data-edit-key="contactInstagram" data-edit-label="Instagram da loja" data-edit-type="instagram">@usenandaboutique</span><span aria-hidden="true">↗</span></a></div>
         <a class="footer-link" href="#avaliacoes">Avaliações das Clientes</a>
+        <button class="install-app-btn secondary-btn" id="installApp" type="button" aria-controls="installModal" aria-haspopup="dialog"><span aria-hidden="true">↓</span>Instalar Nanda Boutique</button>
       </div>
       <div class="footer-bag-scene" aria-hidden="true"><span>👗</span><span>👠</span><span>🌸</span><img src="./img/sacola-carrinho.png" alt="" width="120" height="132" loading="lazy"></div>
       <p class="footer-note">© <span id="year">2026</span> Nanda Boutique · Moda feminina, com afeto.</p><a class="back-top" href="#inicio">Início ↑</a>
@@ -115,27 +127,31 @@
   </footer>
 
   <dialog class="boutique-modal login-modal" id="loginModal" aria-labelledby="loginTitle">
-    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O SEU CANTINHO</p><h2 id="loginTitle">Bem-vinda à Nanda</h2></div><button class="icon-btn" type="button" data-close="loginModal" aria-label="Fechar conta">×</button></header>
-      <p class="account-intro">Seu estilo, suas escolhas e um atendimento cheio de carinho.</p>
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O SEU CANTINHO</p><h2 id="loginTitle" data-edit-key="loginWelcomeTitle" data-edit-label="Título de boas-vindas da conta" data-edit-type="text">Bem-vinda à Nanda</h2></div><button class="icon-btn" type="button" data-close="loginModal" aria-label="Fechar conta">×</button></header>
+      <div class="auth-illustration" aria-hidden="true"><img class="auth-cherry auth-cherry-left" src="./img/cerejeira-direita.png" alt="" width="283" height="512"><img class="auth-logo" src="./img/logo-nanda.jpg" alt="" width="1080" height="1080"><img class="auth-bag" src="./img/sacola-carrinho.png" alt="" width="120" height="132"><span class="auth-butterfly"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"></span><img class="auth-cherry auth-cherry-right" src="./img/cerejeira-direita.png" alt="" width="283" height="512"></div>
+      <p class="account-intro" data-edit-key="loginWelcomeText" data-edit-label="Mensagem de boas-vindas da conta" data-edit-type="text">Seu estilo, suas escolhas e um atendimento cheio de carinho.</p>
+      <p id="authSetupNotice" class="account-note" role="status" hidden>O acesso às contas estará disponível em breve. Você pode explorar a coleção sem cadastro.</p>
       <div id="accountSession" class="account-session" hidden><p id="accountSessionLabel"></p><div class="form-actions"><button class="primary-btn" id="accountAdmin" type="button" hidden>✎ Painel da Nanda</button><button class="secondary-btn" id="accountLogout" type="button">Sair da conta</button></div></div>
       <div id="accountForms">
         <div class="auth-tabs" role="tablist" aria-label="Acesso à conta"><button type="button" role="tab" id="loginTab" data-auth-tab="login" aria-selected="true" aria-controls="loginPanel">Entrar</button><button type="button" role="tab" id="registerTab" data-auth-tab="register" aria-selected="false" aria-controls="registerPanel" tabindex="-1">Criar Conta</button></div>
-        <div id="loginPanel" role="tabpanel" aria-labelledby="loginTab"><form id="loginForm" class="stack-form"><label for="adminUsername">Usuário ou e-mail</label><input id="adminUsername" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254" autofocus><label for="adminPassword">Senha</label><input id="adminPassword" type="password" autocomplete="current-password" required maxlength="128"><p class="form-error" id="loginError" role="alert" hidden></p><button class="primary-btn" id="loginSubmit" type="submit">Entrar</button></form></div>
-        <div id="registerPanel" role="tabpanel" aria-labelledby="registerTab" hidden><form id="registerForm" class="stack-form"><label for="registerName">Nome</label><input id="registerName" autocomplete="name" required minlength="2" maxlength="100"><label for="registerEmail">E-mail</label><input id="registerEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254"><label for="registerCPF">CPF</label><input id="registerCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00"><label for="registerPassword">Senha</label><input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="registerPasswordHint"><p id="registerPasswordHint" class="field-hint">Use pelo menos 8 caracteres.</p><p id="registerError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Criar minha conta</button></form></div>
+        <div id="loginPanel" role="tabpanel" aria-labelledby="loginTab"><form id="loginForm" class="stack-form"><label for="adminUsername">E-mail</label><input id="adminUsername" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254" placeholder="voce@exemplo.com" autofocus><label for="adminPassword">Senha</label><input id="adminPassword" type="password" autocomplete="current-password" required maxlength="128"><button class="text-button forgot-password" id="forgotPassword" type="button" aria-controls="resetModal" aria-haspopup="dialog">Esqueci minha senha</button><p class="form-error" id="loginError" role="alert" hidden></p><button class="primary-btn" id="loginSubmit" type="submit">Entrar</button></form></div>
+        <div id="registerPanel" role="tabpanel" aria-labelledby="registerTab" hidden><form id="registerForm" class="stack-form"><label for="registerName">Nome</label><input id="registerName" autocomplete="name" required minlength="2" maxlength="100"><label for="registerEmail">E-mail</label><input id="registerEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254"><label for="registerCPF">CPF</label><input id="registerCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00"><label for="registerPassword">Senha</label><input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="registerPasswordHint"><p id="registerPasswordHint" class="field-hint">Use pelo menos 8 caracteres.</p><label for="registerConfirmPassword">Confirmar senha</label><input id="registerConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="registerConfirmPasswordHint"><p id="registerConfirmPasswordHint" class="field-hint">Digite a mesma senha mais uma vez.</p><p id="registerError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Criar minha conta</button></form></div>
       </div>
       <button class="anonymous-continue text-button" id="anonymousContinue" type="button">Continuar sem cadastro (Anônimo)</button>
-      <p class="field-hint account-note">Cadastro em demonstração local, sem autenticação em servidor. Use dados de teste.</p>
+      <p class="field-hint account-note">Visitantes anônimos não acumulam pontos para brindes e não podem avaliar produtos.</p>
     </div>
   </dialog>
 
   <dialog class="boutique-modal admin-modal" id="adminModal" aria-labelledby="adminTitle">
     <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">CADA DETALHE, DO SEU JEITO</p><h2 id="adminTitle">Painel da Nanda</h2></div><button class="icon-btn" type="button" data-close="adminModal" aria-label="Fechar painel da Nanda" autofocus>×</button></header>
-      <p class="local-note">As mudanças ficam salvas somente neste navegador. Elas não atualizam a coleção em outros aparelhos.</p>
-      <p class="form-status" id="adminStatus" role="status" aria-live="polite"></p>
+      <p class="local-note" id="adminStorageNote">Alterações salvas neste dispositivo. A integração com a nuvem será configurada depois.</p>
+      <button class="primary-btn admin-add-product" id="addNewProduct" type="button"><span aria-hidden="true">＋</span>Adicionar Novo Produto</button>
+      <p class="form-status success-status" id="adminStatus" role="status" aria-live="polite"></p>
       <section class="admin-section" aria-labelledby="productFormTitle"><h3 id="productFormTitle">Adicionar novo produto</h3>
         <form id="productForm" class="form-grid"><input id="editingProductId" type="hidden">
           <div class="field full-width"><label for="productName">Nome da peça</label><input id="productName" required maxlength="100"></div>
-          <div class="field full-width"><label for="productMedia">URL da foto ou vídeo</label><textarea id="productMedia" rows="3" required maxlength="16000" aria-describedby="mediaHint" placeholder="./img/nome-da-foto.jpg"></textarea><p class="field-hint" id="mediaHint">Até 8 mídias, uma por linha. Use ./img/arquivo.jpg ou um link HTTPS direto de imagem ou vídeo MP4/WebM.</p></div>
+          <div class="field full-width upload-field"><label for="productUpload">Enviar fotos do seu aparelho</label><input id="productUpload" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="productUploadHint"><p class="field-hint" id="productUploadHint">Escolha até 8 fotos JPG, PNG ou WebP. Você também pode usar os links abaixo.</p><div class="upload-preview" id="productUploadPreview" aria-label="Prévia das fotos selecionadas"></div><p class="field-hint" id="uploadStatus" role="status" aria-live="polite"></p></div>
+          <div class="field full-width"><label for="productMedia">URL da foto ou vídeo</label><textarea id="productMedia" rows="3" maxlength="16000" aria-describedby="mediaHint" placeholder="./img/nome-da-foto.jpg"></textarea><p class="field-hint" id="mediaHint">Até 8 mídias, uma por linha. Use uma foto enviada acima ou um link HTTPS direto de imagem ou vídeo MP4/WebM.</p></div>
           <div class="field"><label for="productMediaType">Tipo de mídia</label><select id="productMediaType" aria-describedby="mediaTypeHint"><option value="auto">Identificar pelo arquivo</option><option value="image">Foto</option><option value="video">Vídeo</option></select><p class="field-hint" id="mediaTypeHint">Para links sem extensão, escolha Foto ou Vídeo. Vídeos têm controles e começam somente ao tocar.</p></div>
           <div class="field full-width"><label for="productDescription">Descrição da peça</label><textarea id="productDescription" rows="3" maxlength="800" aria-describedby="descriptionHint"></textarea><p class="field-hint" id="descriptionHint">Conte os detalhes de tecido, caimento e acabamento que aparecem no card.</p></div>
           <div class="field"><label for="productCategory">Categoria</label><select id="productCategory"><option>Conjuntos &amp; Macacões</option><option>Calças &amp; Shorts</option><option>Bolsas &amp; Acessórios</option></select></div>
@@ -143,24 +159,26 @@
           <div class="field"><label for="productUnavailableSizes">Tamanhos indisponíveis</label><input id="productUnavailableSizes" maxlength="100" placeholder="Ex.: P, G" aria-describedby="unavailableSizesHint"><p class="field-hint" id="unavailableSizesHint">Separe por vírgula somente os tamanhos que estão sem estoque.</p></div>
           <div class="field"><label for="productPrice">Preço (R$)</label><input id="productPrice" inputmode="decimal" maxlength="12" placeholder="Ex.: 169,90" aria-describedby="priceHint"><p class="field-hint" id="priceHint">O preço aparece no card. Deixe vazio para informar “Consulte o valor”.</p></div>
           <label class="checkbox-field"><input id="productSoldOut" type="checkbox"> Marcar como esgotado</label>
+          <label class="checkbox-field"><input id="productLowStock" type="checkbox"> Poucas unidades</label>
           <p class="form-error full-width" id="productError" role="alert" hidden></p><div class="form-actions full-width"><button class="primary-btn" id="saveProduct" type="submit">Adicionar produto</button><button class="secondary-btn" id="cancelProductEdit" type="button" hidden>Cancelar edição</button></div>
         </form>
       </section>
       <section class="admin-section" aria-labelledby="manageTitle"><h3 id="manageTitle">Gerenciar coleção</h3><ul class="admin-products" id="adminProducts"></ul><div class="delete-prompt" id="deletePrompt" hidden><p id="deletePromptText"></p><div class="form-actions"><button class="primary-btn" id="confirmDelete" type="button">Excluir produto</button><button class="secondary-btn" id="cancelDelete" type="button">Manter produto</button></div></div></section>
       <section class="admin-section" aria-labelledby="storyFormTitle"><h3 id="storyFormTitle">Nossa história</h3><form id="storyForm" class="stack-form"><label for="adminStory">Texto da história</label><textarea id="adminStory" rows="6" required maxlength="4000"></textarea><button class="secondary-btn" type="submit">Salvar história</button></form></section>
+      <section class="admin-section" aria-labelledby="welcomeMessageTitle"><h3 id="welcomeMessageTitle">Mensagem de boas-vindas</h3><p class="field-hint">Dê seu toque à mensagem que recebe as novas clientes depois do cadastro.</p><button class="secondary-btn" id="editWelcomeMessage" type="button" aria-controls="signupSuccessModal" aria-haspopup="dialog">✎ Editar mensagem de boas-vindas</button></section>
       <button class="text-button" id="adminLogout" type="button">Sair do modo administrador</button>
     </div>
   </dialog>
 
   <dialog class="boutique-modal" id="contentEditorModal" aria-labelledby="contentEditorTitle">
     <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O TOQUE DA NANDA</p><h2 id="contentEditorTitle">Editar conteúdo</h2></div><button class="icon-btn" type="button" data-close="contentEditorModal" aria-label="Fechar edição">×</button></header>
-      <form id="contentEditorForm" class="stack-form"><label id="contentEditorLabel" for="contentEditorValue">Conteúdo</label><textarea id="contentEditorValue" rows="5" required maxlength="4000"></textarea><p id="contentEditorError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Salvar alterações</button></form>
+      <form id="contentEditorForm" class="stack-form"><label id="contentEditorLabel" for="contentEditorValue">Conteúdo</label><textarea id="contentEditorValue" rows="5" required maxlength="4000"></textarea><div class="field upload-field" id="contentImageUploadField" hidden><label for="contentImageUpload">Ou envie uma nova foto</label><input id="contentImageUpload" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="contentImageUploadHint"><p id="contentImageUploadHint" class="field-hint">Escolha uma imagem JPG, PNG ou WebP do seu aparelho.</p></div><p id="contentEditorError" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Salvar alterações</button></form>
     </div>
   </dialog>
 
   <dialog class="boutique-modal" id="reviewModal" aria-labelledby="reviewTitle">
     <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">VAMOS GUARDAR ESSE CARINHO?</p><h2 id="reviewTitle">Sua experiência</h2></div><button class="icon-btn" type="button" data-close="reviewModal" aria-label="Fechar avaliação">×</button></header>
-      <form id="reviewForm" class="stack-form"><label for="reviewEmail">Seu e-mail</label><input id="reviewEmail" type="email" autocomplete="email" required maxlength="254" aria-describedby="reviewEmailHint"><p class="field-hint" id="reviewEmailHint">Uma avaliação por e-mail. Só as estrelas e o comentário ficam visíveis.</p><label for="reviewCPF">CPF</label><input id="reviewCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00" aria-describedby="reviewCPFHint"><p class="field-hint" id="reviewCPFHint">Campo reservado à futura validação de clientes. Nesta demonstração local, use dados de teste.</p>
+      <form id="reviewForm" class="stack-form"><label for="reviewEmail">E-mail da sua conta</label><input id="reviewEmail" type="email" autocomplete="email" required readonly maxlength="254" aria-describedby="reviewEmailHint"><p class="field-hint" id="reviewEmailHint">Seu nome, as estrelas e o comentário aparecem na avaliação. Seu e-mail permanece privado.</p><label for="reviewCPF">CPF</label><input id="reviewCPF" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00" aria-describedby="reviewCPFHint"><p class="field-hint" id="reviewCPFHint">Seu CPF não aparece na avaliação.</p>
         <fieldset class="rating-field"><legend>Como foi sua experiência?</legend><div class="rating-options"><label><input type="radio" name="rating" value="1" required><span>1 ★</span></label><label><input type="radio" name="rating" value="2"><span>2 ★</span></label><label><input type="radio" name="rating" value="3"><span>3 ★</span></label><label><input type="radio" name="rating" value="4"><span>4 ★</span></label><label><input type="radio" name="rating" value="5"><span>5 ★</span></label></div></fieldset>
         <label for="reviewComment">Seu comentário de carinho</label><textarea id="reviewComment" rows="4" required minlength="3" maxlength="600" placeholder="Conte o que mais gostou na sua experiência."></textarea><p class="form-error" id="reviewError" role="alert" hidden></p><button class="primary-btn" type="submit">Salvar minha avaliação</button>
       </form>
@@ -177,6 +195,29 @@
       </footer>
     </div>
   </dialog>
+  <dialog class="boutique-modal" id="resetModal" aria-labelledby="resetTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">VAMOS TE AJUDAR</p><h2 id="resetTitle">Recuperar minha senha</h2></div><button class="icon-btn" type="button" data-close="resetModal" aria-label="Fechar recuperação de senha">×</button></header><p class="field-hint" id="resetHint">Informe o e-mail da sua conta para consultar as opções de recuperação.</p><form id="resetForm" class="stack-form"><label for="resetEmail">Seu e-mail</label><input id="resetEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254"><p class="form-error" id="resetError" role="alert" hidden></p><p class="success-status" id="resetStatus" role="status" aria-live="polite" hidden></p><button class="primary-btn" id="resetSubmit" type="submit">Continuar</button></form></div>
+  </dialog>
+
+  <dialog class="boutique-modal" id="updatePasswordModal" aria-labelledby="updatePasswordTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">SEU NOVO ACESSO</p><h2 id="updatePasswordTitle">Criar nova senha</h2></div><button class="icon-btn" type="button" data-close="updatePasswordModal" aria-label="Fechar nova senha">×</button></header><form id="updatePasswordForm" class="stack-form"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="newPasswordHint"><p class="field-hint" id="newPasswordHint">Use pelo menos 8 caracteres.</p><label for="confirmNewPassword">Confirmar nova senha</label><input id="confirmNewPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"><p class="form-error" id="updatePasswordError" role="alert" hidden></p><p class="success-status" id="updatePasswordStatus" role="status" aria-live="polite" hidden></p><button class="primary-btn" type="submit">Salvar nova senha</button></form></div>
+  </dialog>
+
+  <dialog class="boutique-modal signup-success-modal" id="signupSuccessModal" aria-labelledby="signupSuccessTitle">
+    <div class="modal-layout"><header class="modal-header"><h2 id="signupSuccessTitle">Um novo começo</h2><button class="icon-btn" type="button" data-close="signupSuccessModal" aria-label="Fechar boas-vindas">×</button></header><img class="signup-success-logo" src="./img/logo-nanda.jpg" alt="Nanda Boutique" width="1080" height="1080"><p id="signupSuccessText" class="signup-success-text" data-edit-key="signupWelcome" data-edit-label="Mensagem após criar conta" data-edit-type="text">Seja bem-vinda à Nanda Boutique. Bonita sempre! Sua jornada de elegância começa aqui.</p><button class="primary-btn" type="button" data-close="signupSuccessModal">Explorar a coleção <span aria-hidden="true">↗</span></button></div>
+  </dialog>
+
+  <dialog class="boutique-modal size-guide-modal" id="sizeGuideModal" aria-labelledby="sizeGuideTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">O CAIMENTO QUE VOCÊ AMA</p><h2 id="sizeGuideTitle">Guia de tamanhos</h2></div><button class="icon-btn" type="button" data-close="sizeGuideModal" aria-label="Fechar guia de tamanhos">×</button></header><p class="field-hint" id="sizeGuideHint">Referência ilustrativa de medidas do corpo em centímetros. A modelagem varia entre as peças; confirme as medidas com a loja antes de escolher.</p><table class="size-guide-table" aria-describedby="sizeGuideHint"><caption>Medidas aproximadas · moda feminina</caption><thead><tr><th scope="col">Tam.</th><th scope="col">Brasil</th><th scope="col">Busto</th><th scope="col">Cintura</th><th scope="col">Quadril</th></tr></thead><tbody><tr><th scope="row">P</th><td>36–38</td><td>82–88</td><td>64–70</td><td>90–96</td></tr><tr><th scope="row">M</th><td>40</td><td>89–94</td><td>71–76</td><td>97–102</td></tr><tr><th scope="row">G</th><td>42–44</td><td>95–104</td><td>77–86</td><td>103–112</td></tr><tr><th scope="row">GG</th><td>46</td><td>105–112</td><td>87–94</td><td>113–120</td></tr></tbody></table><p class="size-guide-tip">Use uma fita métrica sem apertar: busto na parte mais cheia, cintura na parte mais estreita e quadril na parte mais larga.</p><a class="secondary-btn" href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer">Tirar uma dúvida com a loja <span aria-hidden="true">↗</span></a></div>
+  </dialog>
+
+  <dialog class="boutique-modal" id="installModal" aria-labelledby="installTitle">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">PERTINHO DE VOCÊ</p><h2 id="installTitle">Nanda na sua tela inicial</h2></div><button class="icon-btn" type="button" data-close="installModal" aria-label="Fechar instruções de instalação">×</button></header><p class="field-hint">Tenha a boutique a um toque, direto da tela inicial do seu aparelho.</p><div class="install-instructions"><section><h3>iPhone ou iPad</h3><p>Abra no Safari, toque em <strong>Compartilhar</strong> e escolha <strong>Adicionar à Tela de Início</strong>.</p></section><section><h3>Android</h3><p>Abra o menu do Chrome <strong>⋮</strong> e escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>, quando disponível.</p></section></div><p class="success-status" id="installAppStatus" role="status" aria-live="polite"></p><button class="primary-btn" type="button" data-close="installModal">Entendi</button></div>
+  </dialog>
+
+  <a class="floating-whatsapp" id="floatingWhatsApp" href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer" aria-label="Fale com a Nanda no WhatsApp (abre em nova aba)"><img src="./img/icon-whatsapp.png" alt="" width="32" height="32"><span>Fale com a Nanda</span></a>
+  <p class="offline-notice" id="offlineNotice" role="status" aria-live="polite" hidden>Você está sem conexão. Continue explorando as peças já carregadas; o atendimento e a conta voltam quando a internet retornar.</p>
+  <p class="save-notice" id="saveNotice" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

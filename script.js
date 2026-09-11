@@ -2,6 +2,8 @@
 
 // Os dados locais são sempre validados antes de chegar à interface.
 function normalizeMediaURL(value, mediaType = 'auto') {
+  // Imagens da galeria são compactadas antes de entrar no armazenamento local.
+  if (typeof value === 'string' && value.length <= 1200000 && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return value;
   if (typeof value !== 'string' || value.length > 2000) return null;
   const raw = value.trim();
   if (!raw || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
@@ -58,7 +60,7 @@ const BoutiqueData = (() => {
     const midias = [...new Set((Array.isArray(raw.midias) ? raw.midias : []).slice(0, 8).map(url => normalizeMediaURL(url, tipoMidia)).filter(Boolean))];
     const preco = raw.preco == null ? null : raw.preco;
     if (!nome || !midias.length || (preco !== null && (typeof preco !== 'number' || !Number.isFinite(preco) || preco < 0 || preco > 1e7))) return null;
-    return { id: raw.id, nome, descricao: cleanText(raw.descricao, 800), categoria: CATEGORIES.includes(raw.categoria) ? raw.categoria : CATEGORIES[0], tamanhos: cleanText(raw.tamanhos, 100), tamanhosIndisponiveis: parseSizes(raw.tamanhosIndisponiveis).filter(size => parseSizes(raw.tamanhos).includes(size)).join(', '), preco, midias, tipoMidia, esgotado: raw.esgotado === true };
+    return { id: raw.id, nome, descricao: cleanText(raw.descricao, 800), categoria: CATEGORIES.includes(raw.categoria) ? raw.categoria : CATEGORIES[0], tamanhos: cleanText(raw.tamanhos, 100), tamanhosIndisponiveis: parseSizes(raw.tamanhosIndisponiveis).filter(size => parseSizes(raw.tamanhos).includes(size)).join(', '), preco, midias, tipoMidia, esgotado: raw.esgotado === true, poucasUnidades: raw.poucasUnidades === true };
   }
   function loadProducts(serialized) {
     const fallback = () => DEFAULT_PRODUCTS.map(normalizeProduct);
@@ -75,19 +77,20 @@ const BoutiqueData = (() => {
     const comentario = cleanText(raw.comentario, 600);
     if (comentario.length < 3) return null;
     // Identificação local nunca é inserida no HTML público dos depoimentos.
-    return { id: raw.id, estrelas: raw.estrelas, comentario, criadoEm: raw.criadoEm, email: normalizeEmail(raw.email), ownerId: cleanText(raw.ownerId, 100), cpfInformado: raw.cpfInformado === true };
+    return { id: raw.id, estrelas: raw.estrelas, comentario, criadoEm: raw.criadoEm, name: cleanText(raw.name, 80) || 'Cliente da Nanda', ownerId: cleanText(raw.ownerId, 100) };
   }
   function loadReviews(serialized) {
     try {
       const rows = JSON.parse(serialized);
-      const ids = new Set(), emails = new Set();
-      return Array.isArray(rows) ? rows.slice(0, 200).map(normalizeReview).filter(r => r && !ids.has(r.id) && (!r.email || !emails.has(r.email)) && ids.add(r.id) && (r.email ? emails.add(r.email) : true)).sort((a, b) => b.criadoEm - a.criadoEm) : [];
+      const ids = new Set(), owners = new Set();
+      return Array.isArray(rows) ? rows.slice(0, 200).map(normalizeReview).filter(r => r && !ids.has(r.id) && (!r.ownerId || !owners.has(r.ownerId)) && ids.add(r.id) && (r.ownerId ? owners.add(r.ownerId) : true)).sort((a, b) => b.criadoEm - a.criadoEm) : [];
     } catch { return []; }
   }
   function normalizeProfile(raw) {
     const value = raw && typeof raw === 'object' ? raw : {};
     const email = normalizeEmail(value.email);
-    return { role: value.role === 'admin' ? 'admin' : value.role === 'customer' && email ? 'customer' : 'guest', email, name: cleanText(value.name, 80), ownerId: cleanText(value.ownerId, 100) };
+    // Nunca restaura privilégios a partir de um perfil serializado no navegador.
+    return { role: email ? 'client' : 'guest', email, name: cleanText(value.name, 80), ownerId: cleanText(value.ownerId, 100) };
   }
   function normalizeCart(entries, products) {
     const legacy = { 'calca-jeans-brilho': 1, 'look-listras-rosa': 2, 'cintos-colecao': 3, 'conjunto-renda': 4, 'calca-listrada': 5 };
@@ -109,16 +112,11 @@ const BoutiqueData = (() => {
     const pieces = entries.map(item => '[' + products.find(p => p.id === item.id).nome + ' - Tamanho ' + item.size + (item.quantity > 1 ? ' - Quantidade ' + item.quantity : '') + ']');
     return 'Olá Nanda Boutique! Tenho interesse nas seguintes peças: ' + pieces.join(', ') + '. Pagamento: ' + payment + '. Poderia confirmar a disponibilidade?';
   }
-  async function verifyAdminCredentials(username, password) {
-    // Conveniência LOCAL solicitada: o modo edição não é autenticação de servidor.
-    // Comparação exata, inclusive maiúsculas e espaços. Nenhuma senha é persistida.
-    return username === 'usenandaboutique' && password === 'Nanda100239';
-  }
-  return { KEYS, CATEGORIES, PAYMENTS, DEFAULT_PRODUCTS, DEFAULT_STORY, cleanText, normalizeEmail, normalizeCPF, parseSizes, productHasSize, cartKey, normalizeProduct, loadProducts, normalizeReview, loadReviews, normalizeProfile, normalizeCart, buildWhatsAppMessage, verifyAdminCredentials };
+  return { KEYS, CATEGORIES, PAYMENTS, DEFAULT_PRODUCTS, DEFAULT_STORY, cleanText, normalizeEmail, normalizeCPF, parseSizes, productHasSize, cartKey, normalizeProduct, loadProducts, normalizeReview, loadReviews, normalizeProfile, normalizeCart, buildWhatsAppMessage };
 })();
 
 function initBoutique() {
-  const D = BoutiqueData, byId = id => document.getElementById(id);
+  const D = BoutiqueData, A = globalThis.BoutiqueAuth, byId = id => document.getElementById(id);
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const forcedColors = matchMedia('(forced-colors: active)');
   const memory = new Map();
@@ -128,12 +126,12 @@ function initBoutique() {
   function node(tag, className, text) { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; }
   let products = D.loadProducts(read(D.KEYS.products));
   let reviews = D.loadReviews(read(D.KEYS.reviews));
-  let profile = D.normalizeProfile(parse(read(D.KEYS.profile)));
-  if (read(D.KEYS.role) !== null) profile.role = read(D.KEYS.role) === 'admin' ? 'admin' : profile.email && read(D.KEYS.role) === 'customer' ? 'customer' : 'guest';
-  const makeToken = () => globalThis.crypto?.randomUUID?.() || 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-  let guestOwner = D.cleanText(read(D.KEYS.reviewOwner), 100) || makeToken();
-  write(D.KEYS.reviewOwner, guestOwner);
-  const reviewOwner = () => profile.role === 'customer' ? profile.ownerId : guestOwner;
+  let profile = D.normalizeProfile(null);
+  // Remove credenciais de demonstração e papéis legados; não são autenticação.
+  for (const key of [D.KEYS.accounts, D.KEYS.profile, D.KEYS.role, D.KEYS.reviewOwner]) { try { localStorage.removeItem(key); } catch {} }
+  const isSignedIn = () => !!A?.getState().verified && !!A.getState().user;
+  const isAdmin = () => isSignedIn() && A.getState().role === 'admin' && D.normalizeEmail(A.getState().user.email) === 'usenandaboutiquee@gmail.com';
+  const reviewOwner = () => isSignedIn() ? A.getState().user.id : '';
   let story = D.cleanText(read(D.KEYS.story), 4000) || D.DEFAULT_STORY;
   const oldCart = read(D.KEYS.cart) ?? read('nanda-boutique-sacola-v3') ?? read('nanda-boutique-sacola-v2') ?? read('nanda-boutique-sacola-v1');
   let cart = D.normalizeCart(parse(oldCart, []), products);
@@ -143,15 +141,24 @@ function initBoutique() {
   let bagAnimation;
   const motionAllowed = () => !reducedMotion.matches && !forcedColors.matches && !document.hidden && !document.querySelector('dialog[open]');
   function notify(text) { clearTimeout(toastTimer); const toast = byId('toast'); toast.textContent = text; toast.classList.add('show'); toastTimer = setTimeout(() => { toast.classList.remove('show'); toast.textContent = ''; }, 4500); }
-  function saveProfile() { write(D.KEYS.profile, JSON.stringify(profile)); write(D.KEYS.role, profile.role); syncProfile(); renderProducts(); renderReviews(); }
+  function saveProfile() {
+    const state = A?.getState();
+    profile = state?.verified && state.user ? D.normalizeProfile({ email: state.user.email, name: state.user.name, ownerId: state.user.id }) : D.normalizeProfile(null);
+    if (isAdmin()) profile.role = 'admin';
+    write(D.KEYS.role, profile.role); syncProfile(); renderProducts(); renderReviews();
+  }
   function syncProfile() {
-    const admin = profile.role === 'admin', signedIn = profile.role !== 'guest';
+    const admin = isAdmin(), signedIn = isSignedIn();
     document.body.classList.toggle('editing-mode', admin);
     byId('adminToggle').hidden = !admin;
+    byId('adminAddProduct').hidden = !admin;
     document.querySelectorAll('.edit-pencil').forEach(button => { button.hidden = !admin; });
-    byId('accountLabel').textContent = admin ? 'Nanda · Editar' : signedIn ? (profile.name.split(' ')[0] || 'Minha conta') : 'Entrar / Cadastrar';
+    byId('accountLabel').textContent = signedIn ? 'Sair' : 'Entrar';
+    byId('accountToggle').setAttribute('aria-label', signedIn ? 'Sair da conta' : 'Entrar ou criar conta');
+    if (signedIn) byId('accountToggle').removeAttribute('aria-haspopup'); else byId('accountToggle').setAttribute('aria-haspopup', 'dialog');
     byId('accountSession').hidden = !signedIn; byId('accountForms').hidden = signedIn; byId('accountAdmin').hidden = !admin;
-    byId('accountSessionLabel').textContent = admin ? 'Modo Edição ativo. Cuide de cada detalhe da boutique.' : 'Olá, ' + (profile.name || 'cliente') + '! Sua conta de demonstração está ativa neste navegador.';
+    byId('accountSessionLabel').textContent = admin ? 'Modo Edição ativo. Cuide de cada detalhe da boutique.' : 'Olá, ' + (profile.name || 'cliente') + '! Que bom ter você aqui.';
+    byId('authSetupNotice').hidden = true;
     byId('reviewEmail').value = profile.email;
   }
   function clearFormError(id) { byId(id).textContent = ''; byId(id).hidden = true; }
@@ -196,62 +203,68 @@ function initBoutique() {
     button.addEventListener('click', () => selectAuthTab(button.dataset.authTab));
     button.addEventListener('keydown', event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); selectAuthTab(event.key === 'Home' ? 'login' : event.key === 'End' ? 'register' : button.dataset.authTab === 'login' ? 'register' : 'login', true); } });
   });
-  byId('accountToggle').addEventListener('click', event => { selectAuthTab('login'); syncProfile(); openDialog('loginModal', event.currentTarget); });
-  byId('anonymousContinue').addEventListener('click', () => { profile = D.normalizeProfile({ role: 'guest' }); saveProfile(); byId('loginModal').close(); notify('Fique à vontade para explorar a coleção.'); });
-  function openAdminAccess(event) { if (profile.role === 'admin') { renderAdmin(); byId('adminStory').value = story; openDialog('adminModal', event.currentTarget.closest('dialog') ? byId('adminToggle') : event.currentTarget); } else { selectAuthTab('login'); openDialog('loginModal', event.currentTarget); } }
+  function showLogin(trigger) { selectAuthTab('login'); syncProfile(); openDialog('loginModal', trigger); }
+  byId('accountToggle').addEventListener('click', event => { if (isSignedIn()) logout(); else showLogin(event.currentTarget); });
+  byId('anonymousContinue').addEventListener('click', () => { byId('loginModal').close(); notify('Fique à vontade para explorar a coleção.'); });
+  function openAdminAccess(event) { if (adminAllowed()) { renderAdmin(); byId('adminStory').value = story; openDialog('adminModal', event.currentTarget.closest('dialog') ? byId('adminToggle') : event.currentTarget); } }
   byId('adminToggle').addEventListener('click', openAdminAccess);
   byId('accountAdmin').addEventListener('click', openAdminAccess);
-  function loadAccounts() {
-    const rows = parse(read(D.KEYS.accounts), []);
-    return Array.isArray(rows) ? rows.filter(row => row && D.normalizeEmail(row.email) && typeof row.salt === 'string' && /^[a-f0-9]{64}$/.test(row.passwordHash) && typeof row.ownerId === 'string').slice(0, 100) : [];
-  }
-  async function passwordHash(password, salt) {
-    if (!globalThis.crypto?.subtle) throw new Error('secure-context');
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-    const bytes = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 120000, hash: 'SHA-256' }, key, 256);
-    return [...new Uint8Array(bytes)].map(value => value.toString(16).padStart(2, '0')).join('');
-  }
   byId('loginForm').addEventListener('submit', async event => {
-    event.preventDefault();
-    const submit = byId('loginSubmit');
-    if (submit.disabled) return;
+    event.preventDefault(); const submit = byId('loginSubmit'); if (submit.disabled) return;
     clearFormError('loginError'); submit.disabled = true;
     try {
-      const username = byId('adminUsername').value, password = byId('adminPassword').value;
-      const accepted = await D.verifyAdminCredentials(username, password);
-      const account = !accepted && loadAccounts().find(row => row.email === D.normalizeEmail(username));
-      const customerAccepted = account && await passwordHash(password, account.salt) === account.passwordHash;
-      byId('adminPassword').value = '';
-      if (!byId('loginModal').open || byId('loginPanel').hidden) return;
-      if (!accepted && !customerAccepted) { formError('loginError', 'Usuário ou senha incorretos. Confira os dados e tente novamente.', byId('adminPassword')); return; }
-      profile = D.normalizeProfile(accepted ? { role: 'admin', name: 'Nanda' } : { role: 'customer', email: account.email, name: account.name, ownerId: account.ownerId }); saveProfile();
-      byId('loginModal').close(); notify(accepted ? 'Modo Edição ativo. Use os lápis para personalizar a boutique.' : 'Bem-vinda de volta, ' + (profile.name || 'cliente') + '!');
-    } catch { formError('loginError', 'Não foi possível entrar. Abra o site por localhost ou HTTPS para usar as contas locais.', byId('adminUsername')); }
+      const email = D.normalizeEmail(byId('adminUsername').value);
+      if (!email) { formError('loginError', 'Informe seu e-mail completo.', byId('adminUsername')); return; }
+      await A.signIn(email, byId('adminPassword').value);
+      saveProfile(); byId('loginModal').close();
+      notify(isAdmin() ? 'Bem-vinda, Nanda! Seu painel está pronto para editar.' : 'Bem-vinda de volta, ' + (profile.name || 'cliente') + '!');
+    } catch (error) { formError('loginError', error.message || 'Não foi possível entrar. Confira seu e-mail e senha.', byId('adminPassword')); }
     finally { submit.disabled = false; byId('adminPassword').value = ''; }
   });
+  function passwordsMatch(first, confirmation, errorId) {
+    if (first.value === confirmation.value) { confirmation.removeAttribute('aria-invalid'); return true; }
+    confirmation.setAttribute('aria-invalid', 'true'); formError(errorId, 'As senhas não coincidem. Digite a mesma senha nos dois campos.', confirmation); return false;
+  }
+  byId('registerConfirmPassword').addEventListener('input', () => { byId('registerConfirmPassword').removeAttribute('aria-invalid'); clearFormError('registerError'); });
   byId('registerForm').addEventListener('submit', async event => {
     event.preventDefault(); clearFormError('registerError');
     const submit = event.currentTarget.querySelector('[type="submit"]'); if (submit.disabled) return;
-    const name = D.cleanText(byId('registerName').value, 80), email = D.normalizeEmail(byId('registerEmail').value), cpf = D.normalizeCPF(byId('registerCPF').value), password = byId('registerPassword').value;
-    if (name.length < 2 || !email || !cpf || password.length < 8) { formError('registerError', 'Informe nome, e-mail, CPF com 11 dígitos e uma senha de pelo menos 8 caracteres.'); return; }
-    if (loadAccounts().some(row => row.email === email)) { formError('registerError', 'Este e-mail já tem uma conta neste navegador. Use a aba Entrar.', byId('registerEmail')); return; }
+    if (!passwordsMatch(byId('registerPassword'), byId('registerConfirmPassword'), 'registerError')) return;
+    const name = D.cleanText(byId('registerName').value, 80), email = D.normalizeEmail(byId('registerEmail').value), password = byId('registerPassword').value;
+    if (name.length < 2 || !email || !D.normalizeCPF(byId('registerCPF').value) || password.length < 8) { formError('registerError', 'Informe nome, e-mail, CPF com 11 dígitos e senha de pelo menos 8 caracteres.'); return; }
     submit.disabled = true;
     try {
-      const salt = makeToken(), hash = await passwordHash(password, salt);
-      if (!byId('loginModal').open || byId('registerPanel').hidden) return;
-      const accounts = loadAccounts();
-      if (accounts.some(row => row.email === email)) { formError('registerError', 'Este e-mail já foi cadastrado. Use a aba Entrar.'); return; }
-      if (accounts.length >= 100) { formError('registerError', 'O limite de contas locais foi atingido neste navegador.'); return; }
-      const account = { name, email, salt, passwordHash: hash, ownerId: makeToken() };
-      accounts.push(account); const saved = write(D.KEYS.accounts, JSON.stringify(accounts));
-      profile = D.normalizeProfile({ role: 'customer', ...account }); saveProfile(); byId('registerForm').reset(); byId('loginModal').close();
-      notify(saved ? 'Conta de demonstração criada neste navegador. Bem-vinda!' : 'Conta disponível nesta aba. Não foi possível salvar no navegador.');
-    } catch { formError('registerError', 'Abra o site por localhost ou HTTPS para criar sua conta de demonstração.'); }
-    finally { submit.disabled = false; byId('registerPassword').value = ''; byId('registerCPF').value = ''; }
+      const result = await A.signUp({ name, email, password });
+      saveProfile(); byId('registerForm').reset();
+      openDialog('signupSuccessModal', byId('accountToggle')); celebrateSignup();
+      if (result.confirmationRequired) notify('Confira seu e-mail para confirmar o cadastro e entrar.');
+    } catch (error) { formError('registerError', error.message || 'Não foi possível criar sua conta. Tente novamente.'); }
+    finally { submit.disabled = false; byId('registerPassword').value = ''; byId('registerConfirmPassword').value = ''; byId('registerCPF').value = ''; }
   });
-  byId('loginModal').addEventListener('close', () => { byId('adminPassword').value = ''; byId('registerPassword').value = ''; byId('registerCPF').value = ''; });
-  function logout() { profile = D.normalizeProfile({ role: 'guest' }); saveProfile(); document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close()); byId('accountToggle').focus({ preventScroll: true }); notify('Sessão encerrada. Continue explorando a boutique.'); }
+  byId('loginModal').addEventListener('close', () => { byId('adminPassword').value = ''; byId('registerPassword').value = ''; byId('registerConfirmPassword').value = ''; byId('registerCPF').value = ''; });
+  async function logout() {
+    await A.signOut(); saveProfile(); document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+    byId('accountToggle').focus({ preventScroll: true }); notify('Sessão encerrada. Continue explorando a boutique.');
+  }
   byId('adminLogout').addEventListener('click', logout); byId('accountLogout').addEventListener('click', logout);
+  byId('forgotPassword').addEventListener('click', () => { byId('resetEmail').value = D.normalizeEmail(byId('adminUsername').value); clearFormError('resetError'); byId('resetStatus').textContent = ''; openDialog('resetModal', byId('accountToggle')); });
+  byId('resetForm').addEventListener('submit', async event => {
+    event.preventDefault(); clearFormError('resetError'); const submit = byId('resetSubmit'); if (submit.disabled) return;
+    const email = D.normalizeEmail(byId('resetEmail').value); if (!email) { formError('resetError', 'Informe seu e-mail completo.', byId('resetEmail')); return; }
+    submit.disabled = true;
+    try { const result = await A.resetPassword(email); byId('resetStatus').textContent = result.simulated ? 'Simulação concluída! Na versão conectada, você receberá um link para redefinir sua senha. Nenhum e-mail foi enviado nesta versão offline.' : 'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.'; }
+    catch (error) { formError('resetError', error.message || 'Não foi possível solicitar a recuperação. Tente novamente.'); }
+    finally { submit.disabled = false; }
+  });
+  byId('updatePasswordForm').addEventListener('submit', async event => {
+    event.preventDefault(); clearFormError('updatePasswordError');
+    if (!passwordsMatch(byId('newPassword'), byId('confirmNewPassword'), 'updatePasswordError')) return;
+    const submit = event.currentTarget.querySelector('[type="submit"]'); if (submit.disabled) return; submit.disabled = true;
+    try { await A.updatePassword(byId('newPassword').value); byId('updatePasswordStatus').textContent = 'Senha atualizada com sucesso!'; event.target.reset(); }
+    catch (error) { formError('updatePasswordError', error.message || 'Não foi possível atualizar a senha. Solicite um novo link.'); }
+    finally { submit.disabled = false; }
+  });
+  byId('updatePasswordModal').addEventListener('close', () => byId('updatePasswordForm').reset());
 
   function renderProducts(category = selectedCategory) {
     selectedCategory = category;
@@ -263,6 +276,7 @@ function initBoutique() {
       const card = node('article', 'product-card'); card.dataset.id = product.id; card.setAttribute('aria-labelledby', 'product-title-' + product.id);
       card.append(createMediaCarousel(product));
       if (product.esgotado) card.append(node('span', 'sold-out-badge', 'Esgotado'));
+      else if (product.poucasUnidades) card.append(node('span', 'product-low-stock', 'Poucas unidades'));
       const content = node('div', 'product-content'), title = node('h3', 'product-title', product.nome), bottom = node('div', 'product-bottom');
       title.id = 'product-title-' + product.id;
       const field = node('div', 'product-size-field'), label = node('label', '', 'Escolher Tamanho'), select = node('select', 'product-size-select'), feedback = node('p', 'size-feedback');
@@ -282,11 +296,12 @@ function initBoutique() {
         restock.href = whatsappURL('Olá Nanda Boutique! Gostaria de ser avisada quando a peça ' + product.nome + (select.value ? ' - Tamanho ' + select.value : '') + ' estiver disponível. Poderia me avisar quando chegar?');
       }
       select.addEventListener('change', updateSizeAction); updateSizeAction();
-      field.append(label, select, feedback); bottom.append(action, restock);
+      const guide = node('button', 'text-button size-guide-link', 'Guia de Medidas'); guide.type = 'button'; guide.setAttribute('aria-haspopup', 'dialog'); guide.setAttribute('aria-controls', 'sizeGuideModal'); guide.addEventListener('click', () => openDialog('sizeGuideModal', guide));
+      field.append(label, select, guide, feedback); bottom.append(action, restock);
       content.append(title);
       if (product.descricao) content.append(node('p', 'product-description', product.descricao));
       content.append(node('p', 'product-price', product.preco === null ? 'Consulte o valor com a loja' : product.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })), field, bottom);
-      if (profile.role === 'admin') { const edit = node('button', 'edit-pencil product-edit', '✎'); edit.type = 'button'; edit.dataset.editProduct = product.id; edit.setAttribute('aria-label', 'Editar produto: ' + product.nome); card.append(edit); }
+      if (isAdmin()) { const edit = node('button', 'edit-pencil product-edit', '✎'); edit.type = 'button'; edit.dataset.editProduct = product.id; edit.setAttribute('aria-label', 'Editar produto: ' + product.nome); card.append(edit); }
       card.append(content); fragment.append(card);
     }
     byId('productsGrid').replaceChildren(fragment); byId('collectionEmpty').hidden = filtered.length > 0;
@@ -344,7 +359,7 @@ function initBoutique() {
     const existing = cart.find(item => item.id === product.id && item.size === size);
     if (existing?.quantity >= 99) { notify('Você já adicionou 99 unidades desta peça.'); return; }
     if (existing) existing.quantity++; else cart.push({ id: product.id, size, quantity: 1 });
-    saveCart(); renderCart(); celebrate(action); notify(product.nome + ' · Tamanho ' + size + ' na sacola.');
+    saveCart(); renderCart(); bounceBag(); celebrate(action); notify(product.nome + ' · Tamanho ' + size + ' na sacola.');
   });
   byId('cartItems').addEventListener('click', event => {
     const button = event.target.closest('button[data-key]'); if (!button || button.disabled) return;
@@ -369,15 +384,70 @@ function initBoutique() {
   checkout.addEventListener('click', validateCheckout); checkout.addEventListener('auxclick', validateCheckout);
   checkout.addEventListener('keydown', event => { if (event.key === ' ' || (event.key === 'Enter' && !checkout.hasAttribute('href'))) { event.preventDefault(); checkout.click(); } });
   // Administração local: cada mutação verifica o perfil da visita atual.
-  function adminAllowed() { if (profile.role === 'admin') return true; byId('adminModal').close(); byId('contentEditorModal').close(); notify('Entre na sua conta da Nanda para editar a boutique.'); return false; }
+  function adminAllowed() { if (isAdmin()) return true; byId('adminModal').close(); byId('contentEditorModal').close(); notify('Entre na conta oficial da Nanda para editar a boutique.'); return false; }
   function nextId(rows) { let id = Date.now(); while (rows.some(row => row.id === id)) id++; return id; }
-  function resetProductForm() { byId('productForm').reset(); byId('editingProductId').value = ''; byId('productFormTitle').textContent = 'Adicionar novo produto'; byId('saveProduct').textContent = 'Adicionar produto'; byId('cancelProductEdit').hidden = true; clearFormError('productError'); }
+  let storeSaving = false, saveNoticeTimer;
+  function savedFeedback(detail = '') {
+    byId('adminStatus').textContent = 'Alteração salva com sucesso!' + (detail ? ' ' + detail : '');
+    const notice = byId('saveNotice'); notice.textContent = 'Alteração salva com sucesso!'; notice.hidden = false;
+    clearTimeout(saveNoticeTimer); saveNoticeTimer = setTimeout(() => { notice.hidden = true; }, 5000);
+  }
+  async function persistStore(next = {}) {
+    if (!adminAllowed() || storeSaving) throw new Error('Aguarde a alteração atual terminar antes de salvar novamente.');
+    storeSaving = true;
+    try {
+      await A.requireAdmin();
+      const payload = { products: next.products || products, story: next.story ?? story, content: next.content || content };
+      await A.saveStore(payload);
+      products = payload.products; story = payload.story; content = payload.content;
+      if (A.mode() !== 'local') { write(D.KEYS.products, JSON.stringify(products)); write(D.KEYS.story, story); write(D.KEYS.content, JSON.stringify(content)); }
+      applyContent(); savedFeedback();
+    } finally { storeSaving = false; }
+  }
+  let uploadPreviews = [], retainedMedia = [];
+  function clearUploads() { uploadPreviews.forEach(url => URL.revokeObjectURL(url)); uploadPreviews = []; byId('productUploadPreview').replaceChildren(); byId('uploadStatus').textContent = ''; }
+  function resetProductForm() { retainedMedia = []; clearUploads(); byId('productForm').reset(); byId('editingProductId').value = ''; byId('productFormTitle').textContent = 'Adicionar novo produto'; byId('saveProduct').textContent = 'Adicionar produto'; byId('cancelProductEdit').hidden = true; clearFormError('productError'); }
+  function openNewProduct(event) { if (!adminAllowed()) return; resetProductForm(); renderAdmin(); openDialog('adminModal', event.currentTarget); byId('productName').focus(); }
+  byId('adminAddProduct').addEventListener('click', openNewProduct); byId('addNewProduct').addEventListener('click', openNewProduct);
+  function validateImageFile(file) {
+    if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024 || !file.size) throw new Error('Escolha uma foto JPG, PNG ou WebP com até 5 MB.');
+  }
+  byId('productUpload').addEventListener('change', () => {
+    clearUploads(); renderRetainedMedia(); const files = [...byId('productUpload').files];
+    try {
+      if (files.length > 8) throw new Error('Selecione até 8 fotos por produto.');
+      files.forEach(file => { validateImageFile(file); const image = node('img'); image.src = URL.createObjectURL(file); uploadPreviews.push(image.src); image.alt = 'Prévia da foto selecionada'; byId('productUploadPreview').append(image); });
+      byId('uploadStatus').textContent = files.length ? files.length + ' foto(s) pronta(s) para salvar.' : '';
+    } catch (error) { clearUploads(); byId('productUpload').value = ''; formError('productError', error.message); }
+  });
+  function renderRetainedMedia() {
+    byId('productUploadPreview').querySelectorAll('.existing-media').forEach(item => item.remove());
+    retainedMedia.forEach((url, index) => {
+      const item = node('div', 'existing-media'), image = node('img'), remove = node('button', 'secondary-btn', 'Remover foto'); image.src = url; image.alt = 'Foto atual do produto'; remove.type = 'button';
+      remove.addEventListener('click', () => { retainedMedia.splice(index, 1); renderRetainedMedia(); }); item.append(image, remove); byId('productUploadPreview').append(item);
+    });
+  }
+  async function compactImage(file) {
+    validateImageFile(file);
+    const url = URL.createObjectURL(file), image = new Image();
+    try {
+      await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = () => reject(new Error('Esta imagem não pôde ser aberta. Escolha outro arquivo.')); image.src = url; });
+      if (image.naturalWidth * image.naturalHeight > 50000000) throw new Error('Esta imagem é muito grande. Escolha uma foto com menos de 50 megapixels.');
+      const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d'); context.fillStyle = '#fff8f4'; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      let blob;
+      for (const quality of [.84, .68, .5]) { blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality)); if (blob && blob.size < 850000) break; }
+      if (!blob || blob.size >= 850000) throw new Error('Escolha uma foto menor para caber no armazenamento deste aparelho.');
+      return new File([blob], 'foto-boutique.jpg', { type: 'image/jpeg' });
+    } finally { URL.revokeObjectURL(url); }
+  }
   function renderAdmin() {
-    if (profile.role !== 'admin') return;
+    if (!isAdmin()) return;
     const fragment = document.createDocumentFragment();
     for (const product of products) {
       const line = node('li', 'admin-product'), details = node('div'), actions = node('div', 'form-actions');
-      details.append(node('h4', '', product.nome), node('p', '', product.esgotado ? 'Esgotado' : 'Disponível'));
+      details.append(node('h4', '', product.nome), node('p', '', product.esgotado ? 'Esgotado' : product.poucasUnidades ? 'Poucas unidades' : 'Disponível'));
       if (product.preco !== null) details.append(node('p', '', product.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })));
       for (const [action, label] of [['edit', 'Editar'], ['stock', product.esgotado ? 'Disponibilizar' : 'Marcar esgotado'], ['delete', 'Excluir']]) {
         const button = node('button', 'secondary-btn', label); button.type = 'button'; button.dataset.adminAction = action; button.dataset.id = product.id; button.setAttribute('aria-label', label + ': ' + product.nome); actions.append(button);
@@ -387,61 +457,58 @@ function initBoutique() {
     if (!products.length) fragment.append(node('li', '', 'Sua coleção ainda não tem peças. Adicione a primeira acima.'));
     byId('adminProducts').replaceChildren(fragment);
   }
-  function commitProducts(message) {
-    const saved = write(D.KEYS.products, JSON.stringify(products));
-    const previousCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  async function commitProducts(nextProducts) {
+    await persistStore({ products: nextProducts });
     cart = D.normalizeCart(cart, products); saveCart(); renderProducts(); renderCart(); renderAdmin();
     pendingDelete = null; byId('deletePrompt').hidden = true;
-    const removed = cart.reduce((sum, item) => sum + item.quantity, 0) < previousCount;
-    byId('adminStatus').textContent = message + (removed ? ' As peças indisponíveis foram retiradas da sacola.' : '') + (saved ? '' : ' Esta alteração está apenas nesta aba; não foi possível salvá-la.');
   }
-  byId('productForm').addEventListener('submit', event => {
-    event.preventDefault(); if (!adminAllowed()) return;
-    clearFormError('productError');
-    const media = byId('productMedia').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
-    const tipoMidia = byId('productMediaType').value;
-    if (!media.length || media.length > 8 || media.some(v => !normalizeMediaURL(v, tipoMidia))) { formError('productError', 'Use de 1 a 8 links diretos de imagens ou vídeos, um por linha. Para links HTTPS sem extensão, escolha Foto ou Vídeo.', byId('productMedia')); return; }
-    const sizes = D.parseSizes(byId('productSizes').value), unavailable = D.parseSizes(byId('productUnavailableSizes').value);
+  byId('productForm').addEventListener('submit', async event => {
+    event.preventDefault(); if (!adminAllowed() || storeSaving) return;
+    const submit = byId('saveProduct'); if (submit.disabled) return; clearFormError('productError');
+    const media = [...retainedMedia, ...byId('productMedia').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean)], files = [...byId('productUpload').files], tipoMidia = byId('productMediaType').value;
+    if ((!media.length && !files.length) || media.length + files.length > 8 || media.some(v => !normalizeMediaURL(v, tipoMidia))) { formError('productError', 'Escolha de 1 a 8 fotos da galeria ou links diretos de fotos e vídeos.', byId('productUpload')); return; }
+    const sizes = D.parseSizes(byId('productSizes').value), unavailable = D.parseSizes(byId('productUnavailableSizes').value), priceText = byId('productPrice').value.trim();
     if (!sizes.length || unavailable.some(size => !sizes.includes(size))) { formError('productError', 'Informe os tamanhos da peça. Os indisponíveis precisam fazer parte dessa lista.', byId('productSizes')); return; }
-    const priceText = byId('productPrice').value.trim();
-    if (priceText && !/^\d{1,8}(?:[.,]\d{1,2})?$/.test(priceText)) { formError('productError', 'Informe um valor como 169,90 ou deixe o preço em branco.', byId('productPrice')); return; }
+    if (priceText && !/^\d{1,8}(?:[.,]\d{1,2})?$/.test(priceText)) { formError('productError', 'Informe um preço como 169,90.', byId('productPrice')); return; }
     const editingId = Number(byId('editingProductId').value);
-    if (editingId && !products.some(p => p.id === editingId)) { formError('productError', 'Essa peça foi removida em outra aba. Cancele a edição e cadastre uma nova peça.'); return; }
-    const product = D.normalizeProduct({ id: editingId || nextId(products), nome: byId('productName').value, descricao: byId('productDescription').value, categoria: byId('productCategory').value, tamanhos: byId('productSizes').value, tamanhosIndisponiveis: byId('productUnavailableSizes').value, tipoMidia, preco: priceText ? Number(priceText.replace(',', '.')) : null, midias: media, esgotado: byId('productSoldOut').checked });
-    if (!product) { formError('productError', 'Confira o nome da peça e o preço. Use um valor de zero a 10.000.000.', byId('productName')); return; }
-    if (!editingId && products.length >= 100) { formError('productError', 'Esta coleção já tem 100 peças. Remova uma peça antes de adicionar outra.'); return; }
-    if (editingId) products = products.map(p => p.id === editingId ? product : p); else products.push(product);
-    commitProducts(editingId ? 'Peça atualizada.' : 'Nova peça adicionada à coleção.'); resetProductForm(); byId('productName').focus();
+    if (editingId && !products.some(p => p.id === editingId)) { formError('productError', 'Esta peça foi removida. Cadastre uma nova peça.'); return; }
+    if (!editingId && products.length >= 100) { formError('productError', 'O catálogo já tem 100 peças. Remova uma antes de adicionar outra.'); return; }
+    const draft = { id: editingId || nextId(products), nome: byId('productName').value, descricao: byId('productDescription').value, categoria: byId('productCategory').value, tamanhos: byId('productSizes').value, tamanhosIndisponiveis: byId('productUnavailableSizes').value, tipoMidia, preco: priceText ? Number(priceText.replace(',', '.')) : null, midias: [...media], esgotado: byId('productSoldOut').checked, poucasUnidades: byId('productLowStock').checked };
+    submit.disabled = true;
+    try {
+      await A.requireAdmin();
+      for (const file of files) { byId('uploadStatus').textContent = 'Preparando e salvando suas fotos…'; draft.midias.push(await A.uploadImage(await compactImage(file))); }
+      const product = D.normalizeProduct(draft); if (!product) throw new Error('Confira o nome, as fotos e o preço da peça.');
+      await commitProducts(editingId ? products.map(p => p.id === editingId ? product : p) : [...products, product]);
+      resetProductForm(); byId('productName').focus();
+    } catch (error) { formError('productError', error.message || 'Não foi possível salvar. Suas informações continuam no formulário.'); }
+    finally { submit.disabled = false; byId('uploadStatus').textContent = ''; }
   });
   byId('cancelProductEdit').addEventListener('click', () => { resetProductForm(); byId('productName').focus(); });
   function editProduct(id) {
     const product = products.find(p => p.id === id); if (!product || !adminAllowed()) return;
-    byId('editingProductId').value = product.id; byId('productName').value = product.nome; byId('productMedia').value = product.midias.join('\n'); byId('productDescription').value = product.descricao; byId('productCategory').value = product.categoria; byId('productSizes').value = product.tamanhos; byId('productUnavailableSizes').value = product.tamanhosIndisponiveis; byId('productMediaType').value = product.tipoMidia; byId('productPrice').value = product.preco == null ? '' : String(product.preco).replace('.', ','); byId('productSoldOut').checked = product.esgotado;
-    byId('productFormTitle').textContent = 'Editar produto'; byId('saveProduct').textContent = 'Salvar alterações'; byId('cancelProductEdit').hidden = false; clearFormError('productError'); byId('productName').focus();
+    resetProductForm(); byId('editingProductId').value = product.id; byId('productName').value = product.nome; retainedMedia = product.midias.filter(url => url.startsWith('data:')); byId('productMedia').value = product.midias.filter(url => !url.startsWith('data:')).join('\n'); renderRetainedMedia(); byId('productDescription').value = product.descricao; byId('productCategory').value = product.categoria; byId('productSizes').value = product.tamanhos; byId('productUnavailableSizes').value = product.tamanhosIndisponiveis; byId('productMediaType').value = product.tipoMidia; byId('productPrice').value = product.preco == null ? '' : String(product.preco).replace('.', ','); byId('productSoldOut').checked = product.esgotado; byId('productLowStock').checked = product.poucasUnidades;
+    byId('productFormTitle').textContent = 'Editar produto'; byId('saveProduct').textContent = 'Salvar alterações'; byId('cancelProductEdit').hidden = false; byId('productName').focus();
   }
-  byId('adminProducts').addEventListener('click', event => {
-    const button = event.target.closest('button[data-admin-action]'); if (!button || !adminAllowed()) return;
+  byId('adminProducts').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-admin-action]'); if (!button || !adminAllowed() || storeSaving) return;
     const product = products.find(p => p.id === Number(button.dataset.id)); if (!product) return;
-    if (button.dataset.adminAction === 'edit') {
-      editProduct(product.id);
-    } else if (button.dataset.adminAction === 'stock') {
-      product.esgotado = !product.esgotado; commitProducts(product.esgotado ? 'Peça marcada como esgotada.' : 'Peça disponível novamente.');
-      byId('adminProducts').querySelector('[data-id="' + product.id + '"][data-admin-action="stock"]')?.focus();
-    } else {
-      pendingDelete = product.id; byId('deletePromptText').textContent = 'Excluir “' + product.nome + '” da coleção e da sacola deste navegador?'; byId('deletePrompt').hidden = false; byId('cancelDelete').focus();
-    }
+    if (button.dataset.adminAction === 'edit') editProduct(product.id);
+    else if (button.dataset.adminAction === 'stock') {
+      try { await commitProducts(products.map(p => p.id === product.id ? { ...p, esgotado: !p.esgotado } : p)); byId('adminProducts').querySelector('[data-id="' + product.id + '"][data-admin-action="stock"]')?.focus(); }
+      catch (error) { byId('adminStatus').textContent = error.message; }
+    } else { pendingDelete = product.id; byId('deletePromptText').textContent = 'Excluir “' + product.nome + '” da coleção e da sacola?'; byId('deletePrompt').hidden = false; byId('cancelDelete').focus(); }
   });
-  byId('cancelDelete').addEventListener('click', () => { const trigger = byId('adminProducts').querySelector('[data-id="' + pendingDelete + '"][data-admin-action="delete"]'); pendingDelete = null; byId('deletePrompt').hidden = true; trigger?.focus(); });
-  byId('confirmDelete').addEventListener('click', () => {
-    if (!adminAllowed() || pendingDelete === null) return;
-    if (Number(byId('editingProductId').value) === pendingDelete) resetProductForm();
-    products = products.filter(p => p.id !== pendingDelete); commitProducts('Peça excluída da coleção.'); (byId('adminProducts').querySelector('button') || byId('productName')).focus();
+  byId('cancelDelete').addEventListener('click', () => { pendingDelete = null; byId('deletePrompt').hidden = true; byId('adminProducts').querySelector('button')?.focus(); });
+  byId('confirmDelete').addEventListener('click', async () => {
+    if (!adminAllowed() || pendingDelete === null || storeSaving) return;
+    try { if (Number(byId('editingProductId').value) === pendingDelete) resetProductForm(); await commitProducts(products.filter(p => p.id !== pendingDelete)); (byId('adminProducts').querySelector('button') || byId('productName')).focus(); }
+    catch (error) { byId('adminStatus').textContent = error.message; }
   });
-  byId('storyForm').addEventListener('submit', event => {
+  byId('storyForm').addEventListener('submit', async event => {
     event.preventDefault(); if (!adminAllowed()) return;
-    const value = D.cleanText(byId('adminStory').value, 4000);
-    if (!value) { byId('adminStatus').textContent = 'Escreva a história antes de salvar.'; byId('adminStory').focus(); return; }
-    story = value; const saved = write(D.KEYS.story, story); byId('storyText').textContent = story; byId('adminStatus').textContent = saved ? 'Nossa história foi atualizada.' : 'Texto atualizado nesta aba. Não foi possível salvar no navegador.';
+    const value = D.cleanText(byId('adminStory').value, 4000); if (!value) return;
+    try { await persistStore({ story: value }); } catch (error) { byId('adminStatus').textContent = error.message; }
   });
   byId('adminModal').addEventListener('close', () => { pendingDelete = null; byId('deletePrompt').hidden = true; });
 
@@ -452,14 +519,14 @@ function initBoutique() {
   let content = {}, editingContentKey = '';
   function normalizeContentValue(key, value) {
     const element = editableElements.get(key); if (!element) return '';
-    const type = element.dataset.editType, text = D.cleanText(value, type === 'image' ? 2000 : 4000);
-    if (type === 'image') { const url = normalizeMediaURL(text, 'image'); return url && !isVideoURL(url) ? url : ''; }
+    const type = element.dataset.editType, text = D.cleanText(value, 4000);
+    if (type === 'image') { const url = normalizeMediaURL(value, 'image'); return url && !isVideoURL(url) ? url : ''; }
     if (type === 'phone') return /^\+?[\d\s().-]+$/.test(text) && /^\d{10,15}$/.test(text.replace(/\D/g, '')) ? text : '';
     if (type === 'instagram') return /^@?[a-z0-9._]{1,30}$/i.test(text) ? text : '';
     return text;
   }
-  function loadContent() {
-    const raw = parse(read(D.KEYS.content), {}); content = {};
+  function loadContent(raw = parse(read(D.KEYS.content), {})) {
+    content = {};
     for (const key of editableElements.keys()) { const value = normalizeContentValue(key, raw?.[key]); if (value) content[key] = value; }
   }
   function phoneNumber() { const raw = (content.contactPhone || contentDefaults.contactPhone || '5511989423365').replace(/\D/g, ''); return raw.length <= 11 ? '55' + raw : raw; }
@@ -481,25 +548,28 @@ function initBoutique() {
   for (const [key, element] of editableElements) {
     const image = element.dataset.editType === 'image', anchor = element.closest('a'), target = anchor || element;
     const wrapper = node('div', image ? 'editable-image' : 'editable-field'); target.before(wrapper); wrapper.append(target);
-    const pencil = node('button', 'edit-pencil', '✎'); pencil.type = 'button'; pencil.hidden = profile.role !== 'admin'; pencil.dataset.editContent = key; pencil.setAttribute('aria-label', 'Editar ' + (element.dataset.editLabel || key)); pencil.setAttribute('aria-haspopup', 'dialog'); pencil.setAttribute('aria-controls', 'contentEditorModal'); wrapper.append(pencil);
+    const pencil = node('button', 'edit-pencil', '✎'); pencil.type = 'button'; pencil.hidden = !isAdmin(); pencil.dataset.editContent = key; pencil.setAttribute('aria-label', 'Editar ' + (element.dataset.editLabel || key)); pencil.setAttribute('aria-haspopup', 'dialog'); pencil.setAttribute('aria-controls', 'contentEditorModal'); wrapper.append(pencil);
     pencil.addEventListener('click', () => {
       if (!adminAllowed()) return;
       editingContentKey = key; byId('contentEditorTitle').textContent = 'Editar ' + (element.dataset.editLabel || 'conteúdo');
       byId('contentEditorLabel').textContent = image ? 'URL da imagem' : element.dataset.editType === 'phone' ? 'WhatsApp com DDD (e código do país, se necessário)' : element.dataset.editType === 'instagram' ? 'Usuário do Instagram' : 'Texto';
-      byId('contentEditorValue').value = key === 'story' ? story : content[key] || contentDefaults[key]; clearFormError('contentEditorError'); openDialog('contentEditorModal', pencil); byId('contentEditorValue').focus();
+      byId('contentImageUploadField').hidden = !image; byId('contentImageUpload').value = ''; byId('contentEditorValue').required = !image; const initial = key === 'story' ? story : content[key] || contentDefaults[key]; byId('contentEditorValue').value = image && initial.startsWith('data:') ? '' : initial; byId('contentEditorValue').placeholder = image ? 'Mantenha a foto atual, escolha uma da galeria ou cole uma URL.' : ''; clearFormError('contentEditorError'); openDialog('contentEditorModal', pencil); byId('contentEditorValue').focus();
     });
   }
-  byId('contentEditorForm').addEventListener('submit', event => {
-    event.preventDefault(); if (!adminAllowed()) return;
-    const value = normalizeContentValue(editingContentKey, byId('contentEditorValue').value);
-    if (!value) { formError('contentEditorError', 'Confira o conteúdo. Use uma imagem local ou HTTPS, um telefone com DDD ou um usuário de Instagram válido para o campo correspondente.', byId('contentEditorValue')); return; }
-    loadContent(); content[editingContentKey] = value;
-    let saved = true;
-    if (editingContentKey === 'story') { story = value; saved = write(D.KEYS.story, value); }
-    saved = write(D.KEYS.content, JSON.stringify(content)) && saved;
-    applyContent(); byId('contentEditorModal').close(); notify(saved ? 'Alteração salva neste navegador.' : 'Alteração aplicada nesta aba. Não foi possível salvar no navegador.');
+  byId('contentEditorForm').addEventListener('submit', async event => {
+    event.preventDefault(); if (!adminAllowed() || storeSaving) return;
+    const key = editingContentKey, field = editableElements.get(key), image = field?.dataset.editType === 'image', file = byId('contentImageUpload').files[0], submit = event.currentTarget.querySelector('[type="submit"]'); if (submit.disabled) return; submit.disabled = true;
+    try {
+      let value = normalizeContentValue(key, byId('contentEditorValue').value);
+      if (image && file) value = await A.uploadImage(await compactImage(file));
+      if (!value && image && !file && !byId('contentEditorValue').value.trim()) value = content[key] || contentDefaults[key];
+      if (!value) throw new Error('Confira o conteúdo. Informe uma imagem, um telefone com DDD ou um usuário de Instagram válido para o campo.');
+      await persistStore({ content: { ...content, [key]: value }, ...(key === 'story' ? { story: value } : {}) });
+      byId('contentEditorModal').close();
+    } catch (error) { formError('contentEditorError', error.message || 'Não foi possível salvar. Tente novamente.', byId('contentEditorValue')); }
+    finally { submit.disabled = false; }
   });
-  byId('contentEditorModal').addEventListener('close', () => { editingContentKey = ''; });
+  byId('contentEditorModal').addEventListener('close', () => { editingContentKey = ''; byId('contentImageUpload').value = ''; });
 
   // Depoimentos: uma avaliação por e-mail, autoria local independente do texto público.
   const reviewTrack = byId('reviewTrack');
@@ -516,7 +586,7 @@ function initBoutique() {
     for (const review of reviews) {
       const card = node('article', 'review-card'), stars = node('p', 'review-stars', '★'.repeat(review.estrelas) + '☆'.repeat(5 - review.estrelas));
       stars.setAttribute('aria-label', review.estrelas + ' de 5 estrelas');
-      card.append(stars, node('p', 'review-comment', review.comentario));
+      card.append(node('p', 'review-author', review.name), stars, node('p', 'review-comment', review.comentario));
       if (review.ownerId && review.ownerId === reviewOwner()) { const remove = node('button', 'text-button review-delete', 'Excluir minha avaliação'); remove.type = 'button'; remove.dataset.reviewId = review.id; card.append(remove); }
       fragment.append(card);
     }
@@ -526,28 +596,54 @@ function initBoutique() {
   byId('reviewPrevious').addEventListener('click', () => moveReview(-1)); byId('reviewNext').addEventListener('click', () => moveReview(1));
   reviewTrack.addEventListener('scroll', () => { if (!reviewScrollFrame) reviewScrollFrame = requestAnimationFrame(() => { reviewScrollFrame = 0; updateReviewNavigation(); }); }, { passive: true });
   reviewTrack.addEventListener('keydown', event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); moveReview(event.key === 'ArrowLeft' ? -1 : 1); } });
-  byId('writeReview').addEventListener('click', event => { byId('reviewEmail').value = profile.email; clearFormError('reviewError'); openDialog('reviewModal', event.currentTarget); });
-  byId('reviewForm').addEventListener('submit', event => {
+  async function refreshReviews() {
+    const loaded = await A.loadReviews(); reviews = D.loadReviews(JSON.stringify(loaded || []));
+    // O cache público guarda somente o que a página exibe, sem identidade privada.
+    write(D.KEYS.reviews, JSON.stringify(reviews.map(({ ownerId, ...review }) => review))); renderReviews();
+  }
+  byId('writeReview').addEventListener('click', event => {
+    if (!isSignedIn()) { showLogin(event.currentTarget); formError('loginError', 'Entre na sua conta para avaliar. Visitantes anônimos não podem deixar avaliações.'); return; }
+    byId('reviewEmail').value = profile.email; clearFormError('reviewError'); openDialog('reviewModal', event.currentTarget);
+  });
+  byId('reviewForm').addEventListener('submit', async event => {
     event.preventDefault(); clearFormError('reviewError');
-    const email = D.normalizeEmail(byId('reviewEmail').value);
-    if (!email) { formError('reviewError', 'Informe um e-mail válido para registrar sua avaliação.', byId('reviewEmail')); return; }
-    if (profile.role === 'customer' && email !== profile.email) { formError('reviewError', 'Use o e-mail da sua conta para identificar sua própria avaliação.', byId('reviewEmail')); return; }
-    if (!D.normalizeCPF(byId('reviewCPF').value)) { formError('reviewError', 'Informe seu CPF com 11 dígitos para a futura validação.', byId('reviewCPF')); return; }
-    reviews = D.loadReviews(read(D.KEYS.reviews));
-    if (reviews.some(review => review.email === email)) { formError('reviewError', 'Este e-mail já tem uma avaliação. Você pode excluir sua própria avaliação antes de escrever outra.', byId('reviewEmail')); return; }
+    if (!isSignedIn()) { byId('reviewModal').close(); showLogin(byId('writeReview')); return; }
+    const submit = event.currentTarget.querySelector('[type="submit"]'); if (submit.disabled) return;
+    if (!D.normalizeCPF(byId('reviewCPF').value)) { formError('reviewError', 'Informe seu CPF com 11 dígitos. Ele não será exibido nem armazenado.', byId('reviewCPF')); return; }
     const checked = byId('reviewForm').querySelector('input[name="rating"]:checked');
-    const review = D.normalizeReview({ id: nextId(reviews), estrelas: Number(checked?.value), comentario: byId('reviewComment').value, criadoEm: Date.now(), email, ownerId: reviewOwner(), cpfInformado: true });
-    if (!review) { formError('reviewError', 'Escolha de 1 a 5 estrelas e escreva um comentário com pelo menos 3 caracteres.', checked || byId('reviewComment')); return; }
-    if (reviews.length >= 200) { formError('reviewError', 'Este navegador já tem 200 avaliações salvas. Agradecemos todo esse carinho!'); return; }
-    reviews.unshift(review); const saved = write(D.KEYS.reviews, JSON.stringify(reviews)); renderReviews(); byId('reviewForm').reset(); byId('reviewModal').close(); notify(saved ? 'Seu carinho ficou registrado. Obrigada pela avaliação!' : 'Avaliação exibida nesta aba. Não foi possível salvá-la no navegador.');
+    const review = D.normalizeReview({ id: nextId(reviews), estrelas: Number(checked?.value), comentario: byId('reviewComment').value, criadoEm: Date.now(), name: profile.name, ownerId: reviewOwner() });
+    if (!review) { formError('reviewError', 'Escolha de 1 a 5 estrelas e escreva um comentário com pelo menos 3 caracteres.'); return; }
+    submit.disabled = true;
+    try { await A.submitReview(review); await refreshReviews(); byId('reviewForm').reset(); byId('reviewModal').close(); notify('Obrigada pelo carinho! Sua avaliação foi salva.'); }
+    catch (error) { formError('reviewError', error.message || 'Não foi possível salvar sua avaliação.'); }
+    finally { submit.disabled = false; }
   });
   byId('reviewModal').addEventListener('close', () => { byId('reviewCPF').value = ''; });
-  reviewTrack.addEventListener('click', event => {
-    const button = event.target.closest('[data-review-id]'); if (!button) return;
-    reviews = D.loadReviews(read(D.KEYS.reviews)); const review = reviews.find(row => row.id === Number(button.dataset.reviewId));
-    if (!review?.ownerId || review.ownerId !== reviewOwner()) { renderReviews(); notify('Apenas a autora pode excluir esta avaliação neste navegador.'); return; }
-    reviews = reviews.filter(row => row.id !== review.id); const saved = write(D.KEYS.reviews, JSON.stringify(reviews)); renderReviews(); byId('writeReview').focus({ preventScroll: true }); notify(saved ? 'Sua avaliação foi excluída.' : 'Avaliação removida nesta aba. Não foi possível salvar a exclusão.');
+  reviewTrack.addEventListener('click', async event => {
+    const button = event.target.closest('[data-review-id]'); if (!button || button.disabled || !isSignedIn()) return;
+    const review = reviews.find(row => row.id === Number(button.dataset.reviewId)); if (!review?.ownerId || review.ownerId !== reviewOwner()) return;
+    button.disabled = true;
+    try { await A.deleteReview(review.id); await refreshReviews(); byId('writeReview').focus({ preventScroll: true }); notify('Sua avaliação foi excluída.'); }
+    catch (error) { button.disabled = false; notify(error.message || 'Não foi possível excluir sua avaliação.'); }
   });
+
+  function bounceBag() {
+    byId('bagCount').classList.add('bag-highlight');
+    setTimeout(() => byId('bagCount').classList.remove('bag-highlight'), 900);
+    if (reducedMotion.matches || typeof bag.animate !== 'function') return;
+    bagAnimation?.cancel(); bagAnimation = bag.animate([{ transform: 'translateY(0) rotate(0)' }, { transform: 'translateY(-5px) rotate(-5deg)' }, { transform: 'translateY(0) rotate(4deg)' }, { transform: 'translateY(-2px) rotate(-2deg)' }, { transform: 'translateY(0) rotate(0)' }], { duration: 650, easing: 'ease-in-out' });
+  }
+  function clearCelebration() { document.querySelectorAll('.celebration-petal').forEach(petal => petal.remove()); }
+  function celebrateSignup() {
+    clearCelebration(); if (reducedMotion.matches || forcedColors.matches) return;
+    for (let i = 0; i < 36; i++) {
+      const petal = node('span', 'celebration-petal', '🌸'); petal.setAttribute('aria-hidden', 'true'); petal.style.setProperty('--left', Math.random() * 100 + '%'); petal.style.setProperty('--duration', 4 + Math.random() * 3 + 's'); petal.style.setProperty('--drift', Math.random() * 100 - 50 + 'px'); petal.style.animationDelay = Math.random() * 2 + 's';
+      byId('signupSuccessModal').append(petal); petal.addEventListener('animationend', () => petal.remove(), { once: true });
+    }
+    setTimeout(clearCelebration, 10000);
+  }
+  byId('signupSuccessModal').addEventListener('close', clearCelebration);
+  byId('editWelcomeMessage').addEventListener('click', () => { if (adminAllowed()) openDialog('signupSuccessModal', byId('adminToggle')); });
 
   // Efeitos limitados e independentes da adição à sacola.
   function cancelFlights() { for (const animation of flights) animation.cancel(); flights.clear(); byId('flightLayer').replaceChildren(); bagAnimation?.cancel(); }
@@ -596,28 +692,41 @@ function initBoutique() {
   setInterval(() => { if (motionAllowed()) dropPetals(Math.random() > .5); }, 3800);
   window.addEventListener('pagehide', () => { cancelFlights(); clearPetals(); });
   document.addEventListener('visibilitychange', () => { document.body.classList.toggle('page-inactive', document.hidden); if (document.hidden) { cancelFlights(); clearPetals(); } else { dropPetals(false); dropPetals(true); } });
-  function motionChanged() { if (reducedMotion.matches || forcedColors.matches) { cancelFlights(); clearPetals(); } else { dropPetals(false); dropPetals(true); } }
+  function motionChanged() { if (reducedMotion.matches || forcedColors.matches) { cancelFlights(); clearPetals(); clearCelebration(); } else { dropPetals(false); dropPetals(true); } }
   reducedMotion.addEventListener('change', motionChanged); forcedColors.addEventListener('change', motionChanged);
   const measure = () => { document.documentElement.style.setProperty('--header-height', Math.ceil(document.querySelector('.store-header').getBoundingClientRect().height) + 'px'); updateReviewNavigation(); };
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(measure); observer.observe(document.querySelector('.store-header')); observer.observe(reviewTrack); } else window.addEventListener('resize', measure, { passive: true });
   window.addEventListener('resize', cancelFlights, { passive: true });
+  async function refreshStore() {
+    const loaded = await A.loadStore(); if (!loaded || typeof loaded !== 'object') return;
+    products = D.loadProducts(JSON.stringify(loaded.products)); story = D.cleanText(loaded.story, 4000) || D.DEFAULT_STORY; loadContent(loaded.content || {});
+    applyContent(); renderProducts(); cart = D.normalizeCart(cart, products); renderCart(); renderAdmin();
+  }
+  let storageTimer;
   window.addEventListener('storage', event => {
-    if (event.storageArea !== localStorage || (event.key !== null && !Object.values(D.KEYS).includes(event.key))) return;
-    if (event.key === null) memory.clear(); else memory.delete(event.key);
-    if (event.key === null || event.key === D.KEYS.products) { products = D.loadProducts(read(D.KEYS.products)); cart = D.normalizeCart(cart, products); renderProducts(); renderCart(); renderAdmin(); }
-    if (event.key === null || event.key === D.KEYS.story) { story = D.cleanText(read(D.KEYS.story), 4000) || D.DEFAULT_STORY; byId('storyText').textContent = story; if (!byId('adminModal').open) byId('adminStory').value = story; }
-    if (event.key === null || event.key === D.KEYS.content) { loadContent(); applyContent(); }
-    if (event.key === null || event.key === D.KEYS.reviews) { reviews = D.loadReviews(read(D.KEYS.reviews)); renderReviews(); }
-    if (event.key === null || event.key === D.KEYS.cart) { cart = D.normalizeCart(parse(read(D.KEYS.cart), []), products); renderCart(true); }
-    if (event.key === null || event.key === D.KEYS.profile || event.key === D.KEYS.role) { profile = D.normalizeProfile(parse(read(D.KEYS.profile))); const role = read(D.KEYS.role); if (role !== null) profile.role = role === 'admin' ? 'admin' : role === 'customer' && profile.email ? 'customer' : 'guest'; syncProfile(); renderProducts(); renderReviews(); if (profile.role !== 'admin') { byId('adminModal').close(); byId('contentEditorModal').close(); } }
-    if (event.key === null || event.key === D.KEYS.reviewOwner) { guestOwner = D.cleanText(read(D.KEYS.reviewOwner), 100) || makeToken(); write(D.KEYS.reviewOwner, guestOwner); renderReviews(); }
+    if (event.key === D.KEYS.cart) { memory.delete(D.KEYS.cart); cart = D.normalizeCart(parse(read(D.KEYS.cart), []), products); renderCart(true); return; }
+    // Papéis, e-mails e perfis legados jamais autorizam a interface.
+    if ([D.KEYS.role, D.KEYS.profile, D.KEYS.accounts, D.KEYS.reviewOwner, D.KEYS.reviews].includes(event.key)) return;
+    clearTimeout(storageTimer); storageTimer = setTimeout(() => { Promise.allSettled([refreshStore(), refreshReviews()]); }, 100);
   });
+
   byId('storyText').textContent = story; byId('adminStory').value = story; byId('year').textContent = new Date().getFullYear();
   applyContent(); syncProfile(); renderProducts(); renderCart(); renderReviews(); measure();
-  write(D.KEYS.products, JSON.stringify(products)); saveCart();
+  saveCart();
   const previousCart = parse(oldCart, []);
   if (Array.isArray(previousCart) && previousCart.length > cart.length) notify('Confira os tamanhos na coleção: itens sem tamanho ou indisponíveis saíram da sacola.');
   dropPetals(false); dropPetals(true);
+  A.subscribe(() => {
+    saveProfile();
+    if (!isAdmin()) { byId('adminModal').close(); byId('contentEditorModal').close(); }
+    if (!isSignedIn()) byId('reviewModal').close();
+    refreshReviews().catch(() => {});
+  });
+  Promise.allSettled([A.restore(), refreshStore()]).then(results => {
+    saveProfile(); refreshReviews().catch(() => notify('Não foi possível atualizar as avaliações agora.'));
+    if (A.getState().recovery) openDialog('updatePasswordModal', byId('accountToggle'));
+    if (results.some(result => result.status === 'rejected')) notify('Alguns dados não puderam ser carregados. A coleção salva continua disponível.');
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initBoutique, { once: true });

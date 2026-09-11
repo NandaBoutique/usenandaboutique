@@ -27,7 +27,7 @@ const review = overrides => ({ id: 7, estrelas: 5, comentario: "Atendimento exce
 async function main() {
   await check("script carrega sem executar a interface", () => {
     assert(events.includes("DOMContentLoaded"));
-    for (const method of ["normalizeProduct", "loadProducts", "parseSizes", "productHasSize", "cartKey", "normalizeEmail", "normalizeCPF", "normalizeReview", "loadReviews", "normalizeProfile", "normalizeCart", "buildWhatsAppMessage", "verifyAdminCredentials"]) assert.equal(typeof D[method], "function", method);
+    for (const method of ["normalizeProduct", "loadProducts", "parseSizes", "productHasSize", "cartKey", "normalizeEmail", "normalizeCPF", "normalizeReview", "loadReviews", "normalizeProfile", "normalizeCart", "buildWhatsAppMessage"]) assert.equal(typeof D[method], "function", method);
   });
   await check("mídias válidas e caminhos perigosos", () => {
     assert.equal(media("img/vestido.jpg"), "./img/vestido.jpg");
@@ -125,9 +125,10 @@ async function main() {
     assert(list.length <= 200);
     assert.equal(new Set(list.map(item => item.id)).size, list.length);
   });
-  await check("credenciais administrativas estritas, inclusive espaços e caixa", async () => {
-    assert.equal(await D.verifyAdminCredentials("usenandaboutique", "Nanda100239"), true);
-    for (const [username, password] of [["", ""], ["usenandaboutique", "errada"], ["Usenandaboutique", "Nanda100239"], [" usenandaboutique", "Nanda100239"], ["usenandaboutique ", "Nanda100239"], ["usenandaboutique", "Nanda100239 "], ["usenandaboutique", "nanda100239"]]) assert.equal(await D.verifyAdminCredentials(username, password), false);
+  await check("o catálogo não contém senha nem autenticação administrativa local", () => {
+    assert.equal(D.verifyAdminCredentials, undefined);
+    assert(!/verifyAdminCredentials|passwordHash|PBKDF2/.test(source));
+    assert(/BoutiqueAuth/.test(source));
   });
   await check("edições permanecem texto e CSP impede scripts externos", () => {
     assert(!/\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(|\beval\s*\(|new\s+Function\s*\(/.test(source));
@@ -140,7 +141,7 @@ async function main() {
   });
   await check("recursos estáticos existem e vídeos mantêm reprodução manual", () => {
     for (const [, resource] of html.matchAll(/\b(?:src|poster)=["']([^"']+)["']/g)) {
-      assert(resource.startsWith("./img/") || resource === "./script.js", resource);
+      assert(resource.startsWith("./img/") || ["./script.js", "./config.js", "./auth.js", "./pwa.js"].includes(resource), resource);
       assert(fs.existsSync(path.join(root, decodeURIComponent(resource))), resource);
     }
     for (const [, resource] of css.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
