@@ -193,7 +193,9 @@ function initBoutique() {
   function syncProfile() {
     const admin = isAdmin(), signedIn = isSignedIn();
     document.body.classList.toggle('editing-mode', admin);
+    byId('adminQuickActions').hidden = !admin;
     byId('adminToggle').hidden = !admin;
+    byId('stockAlertsToggle').hidden = !admin;
     byId('adminAddProduct').hidden = !admin;
     byId('editBrand').hidden = !admin;
     document.querySelectorAll('.edit-pencil').forEach(button => { button.hidden = !admin; });
@@ -206,6 +208,7 @@ function initBoutique() {
     byId('customerGreeting').hidden = !signedIn;
     byId('authSetupNotice').hidden = true;
     byId('reviewEmail').value = profile.email;
+    renderStockAlerts();
   }
   function clearFormError(id) { byId(id).textContent = ''; byId(id).hidden = true; }
   function formError(id, message, field) { byId(id).textContent = message; byId(id).hidden = false; field?.focus(); }
@@ -255,6 +258,8 @@ function initBoutique() {
   function openAdminAccess(event) { if (adminAllowed()) { renderAdmin(); openDialog('adminModal', event.currentTarget.closest('dialog') ? byId('adminToggle') : event.currentTarget); } }
   byId('adminToggle').addEventListener('click', openAdminAccess);
   byId('accountAdmin').addEventListener('click', openAdminAccess);
+  function openStockAlerts(event) { if (adminAllowed()) { renderStockAlerts(); openDialog('stockAlertsModal', event.currentTarget); } }
+  byId('stockAlertsToggle').addEventListener('click', openStockAlerts);
   byId('loginForm').addEventListener('submit', async event => {
     event.preventDefault(); const submit = byId('loginSubmit'); if (submit.disabled) return;
     clearFormError('loginError'); submit.disabled = true;
@@ -497,7 +502,7 @@ function initBoutique() {
   // Administração: cada gravação passa pelo Auth e pelas políticas RLS do Supabase.
   function adminAllowed() {
     if (isAdmin()) { if (storeLoading) { notify('Aguarde a atualização da loja antes de editar.'); return false; } return true; }
-    byId('adminModal').close(); byId('contentEditorModal').close(); byId('brandEditorModal').close(); notify('Entre na conta oficial da Nanda para editar a boutique.'); return false;
+    byId('adminModal').close(); byId('stockAlertsModal').close(); byId('contentEditorModal').close(); byId('brandEditorModal').close(); notify('Entre na conta oficial da Nanda para editar a boutique.'); return false;
   }
   function nextId(rows) { let id = Date.now(); while (rows.some(row => row.id === id)) id++; return id; }
   let storeSaving = false, adminBusy = false, saveNoticeTimer;
@@ -612,6 +617,36 @@ function initBoutique() {
       return new File([blob], 'foto-boutique.jpg', { type: 'image/jpeg' });
     } finally { URL.revokeObjectURL(url); }
   }
+  function collectStockAlerts() {
+    const alerts = [];
+    for (const product of products) for (const size of D.parseSizes(product.tamanhos)) {
+      const stock = D.stockForSize(product, size);
+      if (stock <= product.limiteReposicao) alerts.push({ product, size, stock });
+    }
+    return alerts;
+  }
+  function renderStockAlerts() {
+    const toggle = byId('stockAlertsToggle'), badge = byId('stockAlertsBadge'), list = byId('stockAlertsList'), summary = byId('stockAlertCount'), empty = byId('stockAlertsEmpty');
+    if (!isAdmin()) {
+      toggle.hidden = true; badge.hidden = true; badge.textContent = '0';
+      toggle.setAttribute('aria-label', 'Abrir alertas de estoque'); summary.textContent = ''; list.replaceChildren(); empty.hidden = true;
+      return;
+    }
+    const alerts = collectStockAlerts(), count = alerts.length;
+    toggle.hidden = false; badge.textContent = String(count); badge.hidden = !count;
+    toggle.setAttribute('aria-label', count ? 'Abrir alertas de estoque: ' + count + (count === 1 ? ' alerta' : ' alertas') : 'Abrir alertas de estoque: nenhum alerta');
+    summary.textContent = count ? count + (count === 1 ? ' tamanho precisa de reposição.' : ' tamanhos precisam de reposição.') : 'Nenhum tamanho precisa de reposição neste momento.';
+    const fragment = document.createDocumentFragment();
+    for (const alert of alerts) {
+      const item = node('li', 'stock-alert-item' + (alert.stock === 0 ? ' is-empty' : ''));
+      const status = node('span', 'stock-alert-status', alert.stock === 0 ? 'Esgotado' : 'Em alerta');
+      const details = node('div', 'stock-alert-details');
+      details.append(node('strong', '', alert.product.nome), node('span', '', 'Tamanho: ' + alert.size));
+      item.append(status, details, node('span', 'stock-alert-quantity', alert.stock + (alert.stock === 1 ? ' unidade em estoque' : ' unidades em estoque')));
+      fragment.append(item);
+    }
+    list.replaceChildren(fragment); empty.hidden = !!count;
+  }
   function renderAdmin() {
     if (!isAdmin()) return;
     const fragment = document.createDocumentFragment();
@@ -626,14 +661,7 @@ function initBoutique() {
     }
     if (!products.length) fragment.append(node('li', '', 'Sua coleção ainda não tem peças. Adicione a primeira acima.'));
     byId('adminProducts').replaceChildren(fragment);
-    const alerts = document.createDocumentFragment(); let count = 0;
-    for (const product of products) for (const size of D.parseSizes(product.tamanhos)) {
-      const stock = D.stockForSize(product, size); if (stock > product.limiteReposicao) continue;
-      const item = node('li', stock ? 'stock-alert-low' : 'stock-alert-empty');
-      item.textContent = product.nome + ' · ' + size + ': ' + stock + (stock ? ' restante(s)' : ' · esgotado');
-      alerts.append(item); count++;
-    }
-    byId('stockAlertsList').replaceChildren(alerts); byId('stockAlerts').hidden = !count; byId('stockAlertCount').textContent = count + ' tamanho(s) precisam de reposição.';
+    renderStockAlerts();
     renderAdminContent();
   }
   async function commitProducts(nextProducts) {
@@ -1019,7 +1047,7 @@ function initBoutique() {
         products = D.loadProducts(JSON.stringify(loaded?.products || []));
         story = loaded && Object.hasOwn(loaded, 'story') ? D.cleanText(loaded.story, 4000) : D.DEFAULT_STORY;
         sections = D.normalizeSections(loaded?.sections); loadContent(loaded?.content || {}); storeLoaded = true;
-        cart = D.normalizeCart(cart, products); saveCart(); applyContent(); renderCart(); renderSections(); renderAdmin();
+        cart = D.normalizeCart(cart, products); saveCart(); applyContent(); renderCart(); renderSections(); renderAdmin(); renderStockAlerts();
         if (previousCart !== JSON.stringify(cart)) notify('A disponibilidade mudou. Sua sacola foi ajustada ao estoque atual.');
       } catch (error) { storeLoadError = true; throw error; }
       finally { storeLoading = false; storeRequest = null; renderProducts(); syncCheckout(); }
@@ -1040,7 +1068,7 @@ function initBoutique() {
   dropPetals(false); dropPetals(true);
   A.subscribe(() => {
     saveProfile();
-    if (!isAdmin()) { byId('adminModal').close(); byId('contentEditorModal').close(); byId('brandEditorModal').close(); }
+    if (!isAdmin()) { byId('adminModal').close(); byId('stockAlertsModal').close(); byId('contentEditorModal').close(); byId('brandEditorModal').close(); }
     if (!isSignedIn()) byId('reviewModal').close();
     refreshReviews().catch(() => {});
   });

@@ -38,7 +38,10 @@
     <div class="flying-butterfly butterfly-four"><img src="./img/logo-borboleta.png" alt="" width="833" height="432"><span class="butterfly-cargo">👖</span></div>
   </div>
   <div class="flight-layer" id="flightLayer" aria-hidden="true"></div>
-  <button class="admin-toggle" id="adminToggle" type="button" aria-label="Abrir painel da Nanda" aria-controls="adminModal" aria-haspopup="dialog" title="Painel da Nanda" hidden>⚙</button>
+  <div class="admin-quick-actions" id="adminQuickActions" role="group" aria-label="Atalhos administrativos" hidden>
+    <button class="stock-alert-toggle" id="stockAlertsToggle" type="button" aria-label="Abrir alertas de estoque" aria-controls="stockAlertsModal" aria-haspopup="dialog" title="Alertas de estoque" hidden><span aria-hidden="true">🔔</span><span class="stock-alert-badge" id="stockAlertsBadge" aria-hidden="true" hidden>0</span></button>
+    <button class="admin-toggle" id="adminToggle" type="button" aria-label="Abrir painel da Nanda" aria-controls="adminModal" aria-haspopup="dialog" title="Painel da Nanda" hidden>⚙</button>
+  </div>
 
   <header class="store-header">
     <div class="header-inner container">
@@ -169,7 +172,6 @@
   <dialog class="boutique-modal admin-modal" id="adminModal" aria-labelledby="adminTitle">
     <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">CADA DETALHE, DO SEU JEITO</p><h2 id="adminTitle">Painel da Nanda</h2></div><button class="icon-btn" type="button" data-close="adminModal" aria-label="Fechar painel da Nanda" autofocus>×</button></header>
       <p class="local-note" id="adminStorageNote">Suas alterações são salvas na boutique e ficam disponíveis em todos os aparelhos.</p>
-      <section class="stock-alerts" id="stockAlerts" aria-labelledby="stockAlertsTitle" hidden><div><span class="stock-alert-symbol" aria-hidden="true">!</span><h3 id="stockAlertsTitle">Alerta de reposição</h3></div><p id="stockAlertCount" role="status" aria-live="polite"></p><ul id="stockAlertsList"></ul></section>
       <p class="form-status success-status" id="adminStatus" role="status" aria-live="polite"></p>
       <section class="admin-section" aria-labelledby="productFormTitle"><h3 id="productFormTitle">Adicionar novo produto</h3>
         <form id="productForm" class="form-grid"><input id="editingProductId" type="hidden">
@@ -207,6 +209,14 @@
       </section>
       <section class="admin-section" aria-labelledby="welcomeMessageTitle"><h3 id="welcomeMessageTitle">Mensagem de boas-vindas</h3><p class="field-hint">Edite o texto que aparece depois que uma cliente cria a conta.</p><button class="secondary-btn" id="editWelcomeMessage" type="button" aria-controls="contentEditorModal" aria-haspopup="dialog">Editar mensagem de boas-vindas</button></section>
       <button class="text-button" id="adminLogout" type="button">Sair do modo administrador</button>
+    </div>
+  </dialog>
+
+  <dialog class="boutique-modal stock-alert-modal" id="stockAlertsModal" aria-labelledby="stockAlertsTitle" aria-describedby="stockAlertCount">
+    <div class="modal-layout"><header class="modal-header"><div><p class="eyebrow">REPOSIÇÃO NO MOMENTO CERTO</p><h2 id="stockAlertsTitle">Alertas de estoque</h2></div><button class="icon-btn" type="button" data-close="stockAlertsModal" aria-label="Fechar alertas de estoque">×</button></header>
+      <p class="stock-alert-summary" id="stockAlertCount" role="status" aria-live="polite"></p>
+      <ul class="stock-alert-list" id="stockAlertsList" aria-label="Peças e tamanhos que precisam de reposição"></ul>
+      <p class="stock-alert-empty" id="stockAlertsEmpty" hidden>Nenhuma peça precisa de reposição neste momento.</p>
     </div>
   </dialog>
 
