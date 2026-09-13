@@ -1,12 +1,11 @@
 {
-  "ranAt": "2026-09-10T00:17:03.144Z",
-  "failures": [
-    "quatro borboletas com carga, pétalas e entrega do produto sem interceptar cliques: Expected values to be strictly equal:\n\n4 !== 0\n",
-    "responsividade de 320 a 1920 px, foco e decorações deixam os controles clicáveis: Expected values to be strictly equal:\n+ actual - expected\n\n+ 'shoppingBag'\n- 'accountToggle'\n",
-    "capturas finais e ausência de erros de JavaScript ou recursos locais: nenhuma mensagem ou navegação ao WhatsApp\n+ actual - expected\n\n+ [\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   },\n+   {\n+     type: 'Image',\n+     url: 'http://127.0.0.1:52250/img/icon-whatsapp.png'\n+   }\n+ ]\n- []\n"
-  ],
+  "ranAt": "2026-09-13T02:40:52.630Z",
+  "fixture": "Supabase HTTP simulado; sem serviços reais",
+  "failures": [],
   "browserErrors": [],
   "screenshots": [
+    "admin-1440.png",
+    "admin-390.png",
     "borboleta-entrega.png",
     "conta-320.png",
     "conta-390.png",

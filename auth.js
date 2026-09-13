@@ -1,10 +1,8 @@
-/* Nanda Boutique — contas locais e adaptador de autenticação Supabase.
- * Sem configuração, contas e dados ficam SOMENTE neste navegador. Senhas são
- * derivadas com PBKDF2 + sal aleatório, nunca armazenadas em texto aberto.
- * Esse modo offline não comprova a posse de um e-mail nem protege contra alguém
- * que controla o navegador. A proteção remota real exige Supabase + setup.sql.
- * No modo remoto, localStorage/metadata/JWT decodificado nunca autorizam CMS:
- * /auth/v1/user + PostgreSQL verificam a identidade; tokens usam sessionStorage.
+/* UseNandaBoutique — autenticação, catálogo, avaliações e mídia no Supabase.
+ * A sessão usa sessionStorage; catálogo e contas nunca são salvos localmente.
+ * /auth/v1/user e PostgreSQL verificam a identidade da administradora:
+ * localStorage, metadata e JWT decodificado nunca autorizam a edição.
+ * A senha inicial deve ser definida apenas no Supabase Auth, fora do front-end.
  * Documentação: https://github.com/supabase/auth#endpoints
  * https://supabase.com/docs/guides/database/postgres/row-level-security
  */
@@ -13,16 +11,16 @@
 
     const ADMIN_EMAIL = 'usenandaboutiquee@gmail.com';
     const SESSION_KEY = 'nandaBoutique.supabase.session.v1';
-    const LOCAL_ACCOUNTS_KEY = 'nandaBoutique.local.accounts.v1';
-    const LOCAL_SESSION_KEY = 'nandaBoutique.local.session.v1';
-    const LOCAL_STORE_KEY = 'nandaBoutique.local.store.v1';
-    const LOCAL_REVIEWS_KEY = 'nandaBoutique.local.reviews.v1';
     const listeners = new Set();
     const requests = new Set();
     const rawConfig = globalThis.NANDA_CONFIG || {};
     let tokens = null;
     let generation = 0;
     let refreshJob = null;
+    let storeLoaded = false;
+    let storeUpdatedAt = null;
+    let savingStore = false;
+    let storeLoadJob = null;
     let state = Object.freeze({ user: null, role: 'guest', verified: false, recovery: false });
 
     function publicKeyOnly(key) {
@@ -50,7 +48,7 @@
 
     const config = readConfiguration();
     const configured = () => Boolean(config);
-    const mode = () => configured() ? 'supabase' : 'local';
+    const mode = () => configured() ? 'supabase' : 'unconfigured';
     const getState = () => state;
     const normalizeEmail = value => String(value || '').trim().toLowerCase();
 
@@ -84,9 +82,6 @@
         refreshJob = null;
         tokens = null;
         persistTokens();
-        if (!configured()) {
-            try { localStorage.removeItem(LOCAL_SESSION_KEY); } catch { /* Always clear in-memory state. */ }
-        }
         return publish({ user: null, role: 'guest', verified: false, recovery: false });
     }
 
@@ -110,12 +105,12 @@
         persistTokens();
     }
 
-    async function request(path, { method = 'GET', body, token, headers: extraHeaders, ticket = generation } = {}) {
+    async function request(path, { method = 'GET', body, token, headers: extraHeaders, ticket = generation, timeoutMs = 15000 } = {}) {
         requireConfiguration();
         assertCurrent(ticket);
         const controller = new AbortController();
         requests.add(controller);
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
         const isFile = typeof Blob !== 'undefined' && body instanceof Blob;
         const headers = { apikey: config.key, ...extraHeaders };
         if (token) headers.Authorization = `Bearer ${token}`;
@@ -128,8 +123,15 @@
             });
             assertCurrent(ticket);
             if (!response.ok) {
-                if (response.status === 409) throw error('Você já enviou uma avaliação. Exclua a anterior para avaliar novamente.', 409);
+                let detail = {};
+                try { detail = await response.json(); } catch { /* Keep the safe, contextual message. */ }
+                if (['PGRST202', 'PGRST205', '42P01', '42883'].includes(detail.code)) throw error('A base da loja ainda precisa ser instalada no Supabase. Execute supabase/setup.sql no SQL Editor.', response.status);
+                if (detail.error_code === 'email_not_confirmed' || detail.code === 'email_not_confirmed') throw error('Confirme seu e-mail antes de entrar. Confira também a pasta de spam.', response.status);
+                if (path.startsWith('/auth/v1/token?grant_type=password') && [400, 401, 422].includes(response.status)) throw error('E-mail ou senha incorretos. Confira seus dados e tente novamente.', response.status);
+                if (response.status === 409) throw error(path.includes('review') ? 'Você já enviou uma avaliação. Exclua a anterior para avaliar novamente.' : 'A loja foi alterada em outro dispositivo. Atualize a página antes de salvar novamente.', 409);
                 if (response.status === 429) throw error('Muitas tentativas. Aguarde um pouco e tente novamente.', 429);
+                if (path.startsWith('/storage/') && [400, 404].includes(response.status)) throw error('Não foi possível enviar esta mídia. Confira o formato, o tamanho e se o bucket boutique-media foi criado com supabase/setup.sql.', response.status);
+                if (response.status === 403) throw error('Sua conta não tem permissão para esta ação. Entre com a conta da administradora.', 403);
                 throw error('Não foi possível concluir com segurança. Confira seus dados e tente novamente.', response.status);
             }
             if (response.status === 204) return null;
@@ -233,8 +235,7 @@
         clearSessionMemoryOnly();
         const ticket = generation;
         if (!configured()) {
-            try { return await validateLocalSession(ticket); }
-            catch { if (ticket === generation) clearSession(); return state; }
+            return state;
         }
         try {
             if (callback) {
@@ -267,7 +268,6 @@
     }
 
     async function signIn(email, password) {
-        if (!configured()) return localSignIn(email, password);
         requireConfiguration();
         clearSession();
         const ticket = generation;
@@ -293,15 +293,16 @@
     }
 
     async function signUp({ name, email, password }) {
-        if (!configured()) return localSignUp({ name, email, password });
         requireConfiguration();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw error('Digite um e-mail válido.');
+        if (normalizeEmail(email) === ADMIN_EMAIL) throw error('A conta da dona deve ser criada no Supabase Auth. Para entrar, use a aba Entrar.');
         if (String(password || '').length < 8) throw error('Use uma senha com pelo menos 8 caracteres.');
         if (!String(name || '').trim()) throw error('Informe seu nome para criar sua conta.');
         clearSession();
         const ticket = generation;
         try {
             const response = await request(`/auth/v1/signup?redirect_to=${encodeURIComponent(redirectAddress())}`, {
-                method: 'POST', body: { email: normalizeEmail(email), password: String(password), data: { name: safeName(name), userRole: 'client' } }, ticket
+                method: 'POST', body: { email: normalizeEmail(email), password: String(password), data: { name: safeName(name) } }, ticket
             });
             if (!response?.access_token) return { state, confirmationRequired: true };
             installTokens(response, ticket);
@@ -325,13 +326,13 @@
 
     async function resetPassword(email) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw error('Digite um e-mail válido.');
-        if (!configured()) return { simulated: true };
+        requireConfiguration();
         await request(`/auth/v1/recover?redirect_to=${encodeURIComponent(redirectAddress())}`, { method: 'POST', body: { email: normalizeEmail(email) } });
         return { simulated: false };
     }
 
     async function updatePassword(password) {
-        if (!configured()) throw error('A recuperação por e-mail estará disponível quando a loja conectar o Supabase. Nenhuma senha foi alterada.');
+        requireConfiguration();
         if (String(password || '').length < 8) throw error('Use uma senha com pelo menos 8 caracteres.');
         const ticket = generation;
         await validateSession(ticket);
@@ -344,57 +345,102 @@
         return publish({ ...state, recovery: false });
     }
 
-    const requireUser = () => configured() ? validateSession(generation) : validateLocalSession(generation);
-    const requireAdmin = () => configured() ? validateSession(generation, true) : validateLocalSession(generation, true);
+    const requireUser = () => validateSession(generation);
+    const requireAdmin = () => validateSession(generation, true);
 
     async function loadStore() {
-        if (!configured()) return readLocal(LOCAL_STORE_KEY, null);
-        const rows = await request('/rest/v1/boutique_store?id=eq.main&select=payload');
-        return Array.isArray(rows) && rows[0]?.payload && typeof rows[0].payload === 'object' ? rows[0].payload : null;
+        requireConfiguration();
+        if (savingStore) return Promise.reject(error('Aguarde o salvamento terminar antes de recarregar a loja.'));
+        if (storeLoadJob) return storeLoadJob;
+        // Compartilha leituras simultâneas para impedir respostas fora de ordem.
+        storeLoadJob = (async () => {
+            const rows = await request('/rest/v1/boutique_store?id=eq.main&select=payload,updated_at');
+            if (!Array.isArray(rows)) throw error('O catálogo retornou dados inválidos. Tente carregar novamente.');
+            const row = rows[0];
+            if (row && (!row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload) || typeof row.updated_at !== 'string')) throw error('O catálogo precisa ser revisado no Supabase antes de continuar.');
+            storeUpdatedAt = row?.updated_at || null;
+            storeLoaded = true;
+            return row?.payload || null;
+        })().finally(() => { storeLoadJob = null; });
+        return storeLoadJob;
     }
 
     async function saveStore(payload) {
+        requireConfiguration();
+        if (!storeLoaded) throw error('Carregue o catálogo antes de salvar. Atualize a página e tente novamente.');
+        if (savingStore) throw error('Aguarde o salvamento atual terminar.');
+        if (storeLoadJob) throw error('Aguarde o carregamento da loja terminar antes de salvar.');
         const ticket = generation;
-        if (configured()) await validateSession(ticket, true);
-        else await validateLocalSession(ticket, true);
-        assertCurrent(ticket);
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw error('Os dados da loja são inválidos.');
-        if (!configured()) { writeLocal(LOCAL_STORE_KEY, payload); return structuredClone(payload); }
-        if (new Blob([JSON.stringify(payload)]).size > 2 * 1024 * 1024) throw error('Os dados da loja excederam o limite. Envie imagens pela galeria.');
-        const rows = await request('/rest/v1/boutique_store?on_conflict=id', {
-            method: 'POST', body: { id: 'main', payload }, token: tokens.access_token, ticket,
-            headers: { Prefer: 'resolution=merge-duplicates,return=representation' }
-        });
-        return Array.isArray(rows) && rows[0]?.payload ? rows[0].payload : payload;
+        const serialized = JSON.stringify(payload);
+        if (new Blob([serialized]).size > 2 * 1024 * 1024) throw error('Os dados da loja excederam o limite. Envie imagens pela galeria.');
+        const snapshot = JSON.parse(serialized), expectedUpdatedAt = storeUpdatedAt;
+        savingStore = true;
+        try {
+            await validateSession(ticket, true);
+            assertCurrent(ticket);
+            // Compare-and-swap: a second browser cannot overwrite newer stock/content.
+            // Never use upsert here: first creation must also detect competing writes.
+            const existing = expectedUpdatedAt !== null;
+            const path = existing ? `/rest/v1/boutique_store?id=eq.main&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}` : '/rest/v1/boutique_store';
+            const rows = await request(path, {
+                method: existing ? 'PATCH' : 'POST', body: existing ? { payload: snapshot } : { id: 'main', payload: snapshot }, token: tokens.access_token, ticket,
+                headers: { Prefer: 'return=representation' }
+            });
+            if (!Array.isArray(rows) || !rows[0]?.payload || typeof rows[0]?.updated_at !== 'string') throw error('A loja foi alterada em outro dispositivo. Atualize a página antes de salvar novamente.', 409);
+            storeUpdatedAt = rows[0].updated_at;
+            return rows[0].payload;
+        } finally { savingStore = false; }
     }
 
-    async function uploadImage(file) {
+    async function uploadFile(file, imagesOnly) {
+        requireConfiguration();
         const ticket = generation;
-        if (configured()) await validateSession(ticket, true);
-        else await validateLocalSession(ticket, true);
-        const formats = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-        if (!(file instanceof Blob) || !formats[file.type] || file.size < 1 || file.size > 5 * 1024 * 1024) throw error('Escolha uma foto JPG, PNG ou WebP de até 5 MB.');
+        await validateSession(ticket, true);
+        const formats = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', ...(!imagesOnly ? { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' } : {}) };
+        const video = file?.type?.startsWith('video/');
+        const limit = (video ? 25 : 5) * 1024 * 1024;
+        if (!(file instanceof Blob) || !formats[file.type] || file.size < 1 || file.size > limit) throw error(imagesOnly ? 'Escolha uma foto JPG, PNG ou WebP de até 5 MB.' : 'Escolha uma foto JPG, PNG ou WebP de até 5 MB, ou um vídeo MP4, WebM ou MOV de até 25 MB.');
         // Do not trust a renamed executable or the browser-provided MIME type.
         const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
         const validJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
         const validPng = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value);
         const validWebp = String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
-        if (!(file.type === 'image/jpeg' && validJpeg || file.type === 'image/png' && validPng || file.type === 'image/webp' && validWebp)) throw error('A foto parece inválida. Escolha outra imagem JPG, PNG ou WebP.');
+        const validMp4 = String.fromCharCode(...bytes.slice(4, 8)) === 'ftyp';
+        const validWebm = [0x1a, 0x45, 0xdf, 0xa3].every((value, index) => bytes[index] === value);
+        if (!(file.type === 'image/jpeg' && validJpeg || file.type === 'image/png' && validPng || file.type === 'image/webp' && validWebp || ['video/mp4', 'video/quicktime'].includes(file.type) && validMp4 || file.type === 'video/webm' && validWebm)) throw error('O arquivo parece inválido. Escolha outra foto ou vídeo compatível.');
         assertCurrent(ticket);
-        if (!configured()) {
-            const result = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result));
-                reader.onerror = () => reject(error('Não foi possível abrir esta foto. Escolha outra imagem.'));
-                reader.readAsDataURL(file);
-            });
-            assertCurrent(ticket);
-            return result;
-        }
         const id = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('');
         const name = `${id}.${formats[file.type]}`;
-        await request(`/storage/v1/object/boutique-media/${name}`, { method: 'POST', body: file, token: tokens.access_token, ticket, headers: { 'Content-Type': file.type, 'x-upsert': 'false', 'Cache-Control': '3600' } });
+        // Every replacement has a new URL, including each product's size guide.
+        // Immutable names prevent an old picture from being reused by a CDN/SW.
+        await request(`/storage/v1/object/boutique-media/${name}`, { method: 'POST', body: file, token: tokens.access_token, ticket, timeoutMs: video ? 120000 : 45000, headers: { 'Content-Type': file.type, 'x-upsert': 'false', 'Cache-Control': '31536000' } });
         return `${config.url}/storage/v1/object/public/boutique-media/${name}`;
+    }
+
+    const uploadImage = file => uploadFile(file, true);
+    const uploadMedia = file => uploadFile(file, false);
+
+    function uploadedObjectName(publicURL) {
+        if (typeof publicURL !== 'string' || !config) return '';
+        try {
+            const url = new URL(publicURL);
+            const prefix = '/storage/v1/object/public/boutique-media/';
+            if (url.origin !== config.url || !url.pathname.startsWith(prefix)) return '';
+            const name = decodeURIComponent(url.pathname.slice(prefix.length));
+            // Delete only immutable files created by uploadFile; never a manually entered URL.
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|png|webp|mp4|webm|mov)$/i.test(name) ? name : '';
+        } catch { return ''; }
+    }
+
+    async function removeMedia(publicURL) {
+        requireConfiguration();
+        const name = uploadedObjectName(publicURL);
+        if (!name) return false;
+        const ticket = generation;
+        await validateSession(ticket, true);
+        await request(`/storage/v1/object/boutique-media/${encodeURIComponent(name)}`, { method: 'DELETE', token: tokens.access_token, ticket });
+        return true;
     }
 
     function mapReview(row) {
@@ -406,175 +452,35 @@
     }
 
     async function loadReviews() {
-        if (!configured()) {
-            return readLocalReviews().map(row => ({ ...row, ownerId: row.ownerId === state.user?.id ? row.ownerId : null }));
-        }
+        requireConfiguration();
         const rows = await request('/rest/v1/rpc/boutique_list_reviews', { method: 'POST', body: {}, token: tokens?.access_token });
         return Array.isArray(rows) ? rows.map(mapReview).filter(row => Number.isSafeInteger(row.id) && row.estrelas >= 1 && row.estrelas <= 5) : [];
     }
 
     async function submitReview({ id, estrelas, comentario }) {
         const ticket = generation;
-        if (configured()) await validateSession(ticket);
-        else await validateLocalSession(ticket);
+        await validateSession(ticket);
         assertCurrent(ticket);
         const stars = Number(estrelas);
         const comment = String(comentario || '').trim();
         if (!Number.isSafeInteger(Number(id)) || Number(id) < 1 || !Number.isInteger(stars) || stars < 1 || stars > 5 || comment.length < 3 || comment.length > 1000) throw error('Escolha de 1 a 5 estrelas e escreva um comentário entre 3 e 1.000 caracteres.');
-        if (!configured()) {
-            const reviews = readLocalReviews();
-            if (reviews.some(row => row.ownerId === state.user.id)) throw error('Você já enviou uma avaliação. Exclua a anterior para avaliar novamente.', 409);
-            if (reviews.some(row => row.id === Number(id))) throw error('Tente enviar a avaliação novamente.');
-            const review = { id: Number(id), ownerId: state.user.id, name: state.user.name, estrelas: stars, comentario: comment, criadoEm: Date.now() };
-            writeLocal(LOCAL_REVIEWS_KEY, [review, ...reviews]);
-            return { ...review };
-        }
         const rows = await request('/rest/v1/rpc/boutique_submit_review', { method: 'POST', body: { review_id: Number(id), review_stars: stars, review_comment: comment }, token: tokens.access_token, ticket });
         return Array.isArray(rows) && rows[0] ? mapReview(rows[0]) : null;
     }
 
     async function deleteReview(id) {
         const ticket = generation;
-        if (configured()) await validateSession(ticket);
-        else await validateLocalSession(ticket);
+        await validateSession(ticket);
         assertCurrent(ticket);
         if (!Number.isSafeInteger(Number(id)) || Number(id) < 1) throw error('Avaliação inválida.');
-        if (!configured()) {
-            const reviews = readLocalReviews();
-            if (!reviews.some(row => row.id === Number(id) && row.ownerId === state.user.id)) throw error('Você pode excluir somente a sua própria avaliação.');
-            writeLocal(LOCAL_REVIEWS_KEY, reviews.filter(row => row.id !== Number(id)));
-            return true;
-        }
         const removed = await request('/rest/v1/rpc/boutique_delete_review', { method: 'POST', body: { review_id: Number(id) }, token: tokens.access_token, ticket });
         if (removed !== true) throw error('Você pode excluir somente a sua própria avaliação.');
         return true;
     }
 
-    function readLocal(key, fallback) {
-        try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
-        catch { return fallback; }
-    }
-
-    function writeLocal(key, value) {
-        try { localStorage.setItem(key, JSON.stringify(value)); }
-        catch { throw error('Não foi possível salvar neste navegador. Libere espaço ou reduza a quantidade/tamanho das fotos.'); }
-    }
-
-    function readLocalAccounts() {
-        const entries = readLocal(LOCAL_ACCOUNTS_KEY, []);
-        return Array.isArray(entries) ? entries.filter(account => account && typeof account.id === 'string' && typeof account.email === 'string' && typeof account.passwordHash === 'string' && typeof account.salt === 'string' && account.algorithm === 'PBKDF2-SHA256' && account.iterations === 210000) : [];
-    }
-
-    function readLocalReviews() {
-        const entries = readLocal(LOCAL_REVIEWS_KEY, []);
-        return Array.isArray(entries) ? entries.filter(row => row && Number.isSafeInteger(row.id) && typeof row.ownerId === 'string' && Number.isInteger(row.estrelas) && row.estrelas >= 1 && row.estrelas <= 5).map(row => ({
-            id: row.id, ownerId: row.ownerId, name: safeName(row.name), estrelas: row.estrelas,
-            comentario: String(row.comentario || '').slice(0, 1000), criadoEm: Number(row.criadoEm) || Date.now()
-        })) : [];
-    }
-
-    function hex(bytes) { return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join(''); }
-
-    function randomHex(size = 24) {
-        if (!globalThis.crypto?.getRandomValues) throw error('Abra a loja em um navegador atualizado para criar sua conta.');
-        return hex(crypto.getRandomValues(new Uint8Array(size)));
-    }
-
-    async function passwordDigest(password, salt) {
-        if (!globalThis.crypto?.subtle) throw error('Para proteger sua senha, abra a loja por localhost ou HTTPS em um navegador atualizado.');
-        const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-        const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 210000 }, material, 256);
-        return hex(new Uint8Array(bits));
-    }
-
-    async function tokenDigest(token) {
-        if (!globalThis.crypto?.subtle) throw error('Abra a loja por localhost ou HTTPS para entrar com segurança.');
-        return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))));
-    }
-
-    function sameHash(left, right) {
-        if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) return false;
-        let difference = 0;
-        for (let index = 0; index < left.length; index += 1) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
-        return difference === 0;
-    }
-
-    async function validateLocalSession(ticket, needsAdmin = false) {
-        try {
-            assertCurrent(ticket);
-            const localSession = readLocal(LOCAL_SESSION_KEY, null);
-            if (!localSession || typeof localSession.token !== 'string' || Number(localSession.expiresAt) < Date.now()) throw error('Entre na sua conta para continuar.');
-            const account = readLocalAccounts().find(entry => entry.id === localSession.accountId);
-            if (!account || account.credentialVersion !== localSession.credentialVersion || !sameHash(account.sessionHash, await tokenDigest(localSession.token))) throw error('Sua sessão expirou. Entre novamente para continuar.');
-            assertCurrent(ticket);
-            // Re-read the record after crypto work to catch logout in another tab.
-            if (readLocal(LOCAL_SESSION_KEY, null)?.token !== localSession.token) throw error('Sua sessão foi encerrada.');
-            const admin = normalizeEmail(account.email) === ADMIN_EMAIL;
-            const next = publish({
-                user: { id: account.id, email: normalizeEmail(account.email), name: safeName(account.name) },
-                role: admin ? 'admin' : 'client', verified: true, recovery: false,
-                identityVerified: false, mode: 'local'
-            });
-            if (needsAdmin && !admin) throw error('A edição está disponível somente para a administradora da loja.', 403);
-            return next;
-        } catch (issue) {
-            if (ticket === generation && issue.status !== 403) clearSession();
-            throw issue;
-        }
-    }
-
-    async function establishLocalSession(account, ticket) {
-        const token = randomHex();
-        const sessionHash = await tokenDigest(token);
-        assertCurrent(ticket);
-        const accounts = readLocalAccounts();
-        const current = accounts.find(entry => entry.id === account.id);
-        if (!current || current.passwordHash !== account.passwordHash) throw error('A conta mudou. Entre novamente.');
-        current.sessionHash = sessionHash;
-        writeLocal(LOCAL_ACCOUNTS_KEY, accounts);
-        writeLocal(LOCAL_SESSION_KEY, { accountId: current.id, token, credentialVersion: current.credentialVersion, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
-        return validateLocalSession(ticket);
-    }
-
-    async function localSignIn(email, password) {
-        clearSession();
-        const ticket = generation;
-        const account = readLocalAccounts().find(entry => normalizeEmail(entry.email) === normalizeEmail(email));
-        const supplied = await passwordDigest(String(password || ''), account?.salt || randomHex(16));
-        assertCurrent(ticket);
-        if (!account || !sameHash(supplied, account.passwordHash)) throw error('E-mail ou senha incorretos. Confira seus dados e tente novamente.');
-        return establishLocalSession(account, ticket);
-    }
-
-    async function localSignUp({ name, email, password }) {
-        const address = normalizeEmail(email);
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) throw error('Digite um e-mail válido.');
-        if (!String(name || '').trim()) throw error('Informe seu nome para criar sua conta.');
-        if (String(password || '').length < 8 || String(password).length > 1024) throw error('Use uma senha entre 8 e 1.024 caracteres.');
-        if (readLocalAccounts().some(entry => normalizeEmail(entry.email) === address)) throw error('Este e-mail já tem uma conta neste navegador. Use a aba Entrar.');
-        clearSession();
-        const ticket = generation;
-        const salt = randomHex(16);
-        const passwordHash = await passwordDigest(String(password), salt);
-        assertCurrent(ticket);
-        const accounts = readLocalAccounts();
-        if (accounts.some(entry => normalizeEmail(entry.email) === address)) throw error('Este e-mail já tem uma conta neste navegador. Use a aba Entrar.');
-        const account = { id: `local-${randomHex(16)}`, email: address, name: safeName(name), algorithm: 'PBKDF2-SHA256', iterations: 210000, salt, passwordHash, credentialVersion: randomHex(12), createdAt: Date.now() };
-        writeLocal(LOCAL_ACCOUNTS_KEY, [...accounts, account]);
-        return { state: await establishLocalSession(account, ticket), confirmationRequired: false };
-    }
-
-    if (typeof globalThis.addEventListener === 'function') {
-        globalThis.addEventListener('storage', event => {
-            if (configured() || ![LOCAL_SESSION_KEY, LOCAL_ACCOUNTS_KEY].includes(event.key)) return;
-            const ticket = generation;
-            validateLocalSession(ticket).catch(() => {});
-        });
-    }
-
     globalThis.BoutiqueAuth = Object.freeze({
         configured, mode, getState, restore, signIn, signUp, signOut, resetPassword, updatePassword,
-        requireAdmin, requireUser, loadStore, saveStore, uploadImage, loadReviews, submitReview, deleteReview,
+        requireAdmin, requireUser, loadStore, saveStore, uploadImage, uploadMedia, removeMedia, loadReviews, submitReview, deleteReview,
         subscribe(listener) {
             if (typeof listener !== 'function') return () => {};
             listeners.add(listener);

@@ -1,8 +1,11 @@
--- Nanda Boutique: execute no SQL Editor do SEU projeto Supabase.
+-- UseNandaBoutique: execute este arquivo completo no SQL Editor do projeto.
 -- 1. Mantenha Authentication > Email > Confirm email ATIVADO.
 -- 2. Cadastre o domínio HTTPS em Site URL e Redirect URLs.
--- 3. Crie/convide a conta usenandaboutiquee@gmail.com pelo Dashboard antes de
---    abrir os cadastros ao público; confirme o e-mail. Senha apenas no Auth.
+-- 3. Authentication > Users > Add user > Create new user:
+--    email: usenandaboutiquee@gmail.com; senha inicial: nanda100239.
+--    Confirme a titularidade do email e habilite Auto Confirm User para a dona.
+--    Se a conta já existir, ajuste a senha pelo Auth em vez de criar duplicata.
+--    Essa senha pertence apenas ao provisionamento; nunca ao JavaScript público.
 -- 4. Copie URL e chave PUBLICÁVEL para config.js. Nunca use service_role/secret.
 -- O schema nanda_private NÃO deve ser adicionado a Exposed schemas da Data API.
 -- Não há CPF nesta base; e-mails das avaliações ficam somente em schema privado.
@@ -47,7 +50,13 @@ grant insert, update on public.boutique_store to authenticated;
 
 create or replace function nanda_private.touch_store()
 returns trigger language plpgsql security invoker set search_path = ''
-as $$ begin new.updated_at = now(); return new; end; $$;
+as $$
+begin
+    -- Token de concorrência monotônico: PATCH compara a versão lida pela dona.
+    new.updated_at = greatest(clock_timestamp(), old.updated_at + interval '1 microsecond');
+    return new;
+end;
+$$;
 revoke all on function nanda_private.touch_store() from public, anon, authenticated;
 drop trigger if exists boutique_store_updated_at on public.boutique_store;
 create trigger boutique_store_updated_at before update on public.boutique_store
@@ -157,9 +166,9 @@ revoke all on function public.boutique_delete_review(bigint) from public, anon, 
 grant execute on function public.boutique_delete_review(bigint) to authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('boutique-media', 'boutique-media', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
-on conflict (id) do update set public = true, file_size_limit = 5242880,
-allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp'];
+values ('boutique-media', 'boutique-media', true, 26214400, array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'])
+on conflict (id) do update set public = true, file_size_limit = 26214400,
+allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
 
 drop policy if exists boutique_media_select on storage.objects;
 create policy boutique_media_select on storage.objects for select to authenticated
@@ -178,6 +187,9 @@ using (bucket_id = 'boutique-media' and (select nanda_private.is_store_admin()))
 commit;
 
 -- Teste no site com: visitante, cliente confirmado e dona confirmada.
--- Trocar localStorage.userRole ou user_metadata não muda as políticas do banco.
+-- Trocar dados do navegador ou user_metadata não muda as políticas do banco.
 -- Catálogo/imagens são públicos. Edição e upload exigem a identidade da dona.
+-- O catálogo inicia vazio e será criado pelo primeiro salvamento da dona.
+-- Estoques ficam no payload com cada produto; checkout no WhatsApp não reserva
+-- nem desconta quantidades automaticamente. A dona confirma e atualiza a venda.
 -- Uma avaliação por usuário e e-mail verificado; exclusão somente pelo autor.

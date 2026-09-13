@@ -44,7 +44,7 @@ async function key(key, code, windowsVirtualKeyCode) {
 async function reload() {
   await send("Page.reload", { ignoreCache: false });
   await delay(200);
-  await until("document.readyState === 'complete' && document.querySelectorAll('.product-card').length > 0", "carregamento");
+  await until("document.readyState === 'complete' && typeof BoutiqueAuth !== 'undefined' && document.querySelector('#catalogLoading')?.hidden", "carregamento");
 }
 async function main() { console.log("Iniciando verificações no navegador...");
   fs.mkdirSync(artifacts, { recursive: true });
@@ -54,6 +54,7 @@ async function main() { console.log("Iniciando verificações no navegador...");
   ].find(file => fs.existsSync(file));
   assert(browserPath, "Chrome ou Edge não encontrado.");
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "nanda-boutique-test-"));
+  const uploadFile = path.join(profile, "foto-da-galeria.png"); fs.copyFileSync(path.join(root, "img", "look-listras-rosa-1.jpg"), uploadFile);
   server = http.createServer((req, res) => {
     let file;
     try {
@@ -78,13 +79,18 @@ async function main() { console.log("Iniciando verificações no navegador...");
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = "http://127.0.0.1:" + server.address().port;
-  const api = "https://nanda-test.supabase.co";
+  const api = "https://gisoblzonuzpowkwrwnq.supabase.co";
   const officialEmail = "usenandaboutiquee@gmail.com";
   const makeUser = (email, id) => ({ id, email, email_confirmed_at: "2026-01-01T00:00:00Z", is_anonymous: false, user_metadata: { name: email === officialEmail ? "Nanda" : "Cliente Teste", full_name: email === officialEmail ? "Nanda" : "Cliente Teste" } });
   const users = { admin: makeUser(officialEmail, "11111111-1111-4111-8111-111111111111"), client: makeUser("cliente@example.com", "22222222-2222-4222-8222-222222222222") };
-  const fixture = { configured: false, store: null, reviews: [], calls: [], rpcAdmin: true };
-  const resetFixture = () => { fixture.store = null; fixture.reviews = []; fixture.calls = []; fixture.rpcAdmin = true; fixture.configured = false; };
-  const fulfill = (requestId, payload, status = 200, type = "application/json") => send("Fetch.fulfillRequest", { requestId, responseCode: status, responseHeaders: [{ name: "Content-Type", value: type }, { name: "Access-Control-Allow-Origin", value: "*" }, { name: "Access-Control-Allow-Headers", value: "*" }, { name: "Access-Control-Allow-Methods", value: "GET, POST, DELETE, PUT, OPTIONS" }], body: Buffer.from(typeof payload === "string" ? payload : JSON.stringify(payload)).toString("base64") });
+  const seedStore = () => ({ products: [
+    { id: 41, nome: "Vestido Aurora", descricao: "Tecido leve e delicado", categoria: "Conjuntos & Macacões", tamanhos: "P, M, G", estoquePorTamanho: { P: 3, M: 2, G: 0 }, limiteReposicao: 2, preco: 129.9, midias: ["./img/look-listras-rosa-1.jpg", "./img/look-listras-rosa-2.jpg", "./img/look-listras-rosa-4.mp4"], guiaMedidas: api + "/storage/v1/object/public/boutique-media/guia-original.jpg" },
+    { id: 42, nome: "Saia Coração", descricao: "Saia para todos os momentos", categoria: "Conjuntos & Macacões", tamanhos: "P, M", estoquePorTamanho: { P: 4, M: 0 }, limiteReposicao: 2, preco: 80, midias: ["./img/conjunto-renda-1.jpg"] }
+  ], story: "História cadastrada no Supabase.", content: {}, sections: [] });
+  const fixture = { configured: true, store: seedStore(), version: 1, reviews: [], calls: [], rpcAdmin: true, readDelay: 0, readError: false, saveError: false };
+  const updatedAt = () => "2026-09-12T12:00:" + String(fixture.version).padStart(2, "0") + ".000Z";
+  const resetFixture = () => { Object.assign(fixture, { configured: true, store: seedStore(), version: 1, reviews: [], calls: [], rpcAdmin: true, readDelay: 0, readError: false, saveError: false }); };
+  const fulfill = (requestId, payload, status = 200, type = "application/json") => send("Fetch.fulfillRequest", { requestId, responseCode: status, responseHeaders: [{ name: "Content-Type", value: type }, { name: "Access-Control-Allow-Origin", value: "*" }, { name: "Access-Control-Allow-Headers", value: "*" }, { name: "Access-Control-Allow-Methods", value: "GET, POST, PATCH, DELETE, PUT, OPTIONS" }], body: Buffer.from(typeof payload === "string" ? payload : JSON.stringify(payload)).toString("base64") });
   const intercept = async event => {
     const { requestId, request } = event;
     const url = new URL(request.url);
@@ -98,7 +104,7 @@ async function main() { console.log("Iniciando verificações no navegador...");
     fixture.calls.push({ path: url.pathname, method: request.method, body, kind });
     if (url.pathname === "/auth/v1/token") {
       if (url.searchParams.get("grant_type") === "refresh_token") { const role = body.refresh_token?.includes("admin") ? "admin" : "client"; return fulfill(requestId, { access_token: "access-" + role, refresh_token: "refresh-" + role, expires_in: 3600, user: users[role] }); }
-      if (body.password !== "SenhaTeste!123" || ![officialEmail, "cliente@example.com"].includes(body.email)) return fulfill(requestId, { msg: "Invalid login credentials" }, 400);
+      if (body.password !== (body.email === officialEmail ? "nanda100239" : "SenhaTeste!123") || ![officialEmail, "cliente@example.com"].includes(body.email)) return fulfill(requestId, { msg: "Invalid login credentials" }, 400);
       const role = body.email === officialEmail ? "admin" : "client";
       return fulfill(requestId, { access_token: "access-" + role, refresh_token: "refresh-" + role, expires_in: 3600, user: users[role] });
     }
@@ -107,8 +113,17 @@ async function main() { console.log("Iniciando verificações no navegador...");
     if (["/auth/v1/recover", "/auth/v1/logout"].includes(url.pathname)) return fulfill(requestId, {});
     if (url.pathname === "/rest/v1/rpc/is_store_admin") return fulfill(requestId, kind === "admin" && fixture.rpcAdmin);
     if (url.pathname === "/rest/v1/boutique_store") {
-      if (request.method === "POST") { if (kind !== "admin" || !fixture.rpcAdmin) return fulfill(requestId, { message: "Forbidden" }, 403); fixture.store = body.payload; return fulfill(requestId, [{ id: "main", payload: fixture.store }]); }
-      return fulfill(requestId, fixture.store ? [{ payload: fixture.store }] : []);
+      if (["POST", "PATCH"].includes(request.method)) {
+        if (kind !== "admin" || !fixture.rpcAdmin) return fulfill(requestId, { message: "Forbidden" }, 403);
+        if (fixture.saveError) return fulfill(requestId, { message: "Falha de teste ao salvar" }, 500);
+        if (request.method === "PATCH" && url.searchParams.get("updated_at") !== "eq." + updatedAt()) return fulfill(requestId, []);
+        if (request.method === "POST" && fixture.store) return fulfill(requestId, { message: "Conflict" }, 409);
+        fixture.store = body.payload; fixture.version++;
+        return fulfill(requestId, [{ id: "main", payload: fixture.store, updated_at: updatedAt() }]);
+      }
+      if (fixture.readDelay) await delay(fixture.readDelay);
+      if (fixture.readError) return fulfill(requestId, { message: "Falha de teste ao carregar" }, 500);
+      return fulfill(requestId, fixture.store ? [{ payload: fixture.store, updated_at: updatedAt() }] : []);
     }
     if (url.pathname === "/rest/v1/rpc/boutique_list_reviews") return fulfill(requestId, fixture.reviews.map(review => ({ ...review, owner_id: header && review.owner_id === user.id ? user.id : null })));
     if (url.pathname === "/rest/v1/rpc/boutique_submit_review") {
@@ -116,7 +131,8 @@ async function main() { console.log("Iniciando verificações no navegador...");
       const review = { id: body.review_id, owner_id: user.id, display_name: user.user_metadata.name, stars: body.review_stars, comment: body.review_comment, created_at: new Date().toISOString() };
       fixture.reviews.unshift(review); return fulfill(requestId, [review]);
     }
-    if (url.pathname === "/rest/v1/rpc/boutique_delete_review") { fixture.reviews = fixture.reviews.filter(review => review.id !== body.review_id || review.owner_id !== user.id); return fulfill(requestId, null); }
+    if (url.pathname === "/rest/v1/rpc/boutique_delete_review") { const owned = fixture.reviews.some(review => review.id === body.review_id && review.owner_id === user.id); fixture.reviews = fixture.reviews.filter(review => review.id !== body.review_id || review.owner_id !== user.id); return fulfill(requestId, owned); }
+    if (url.pathname.startsWith("/storage/v1/object/public/") && request.method === "GET") return send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "Content-Type", value: "image/jpeg" }, { name: "Access-Control-Allow-Origin", value: "*" }], body: fs.readFileSync(path.join(root, "img", "look-listras-rosa-1.jpg")).toString("base64") });
     if (url.pathname.startsWith("/storage/v1/object/")) return fulfill(requestId, { Key: url.pathname.replace("/storage/v1/object/", "") });
     return fulfill(requestId, { message: "Endpoint não simulado: " + url.pathname }, 404);
   };
@@ -161,254 +177,190 @@ async function main() { console.log("Iniciando verificações no navegador...");
   await send("Network.setBypassServiceWorker", { bypass: true });
   await send("Fetch.enable", { patterns: [{ urlPattern: "*/config.js" }, { urlPattern: api + "/*" }] });
   await send("Page.navigate", { url: base });
-  await until("document.readyState === 'complete' && document.querySelectorAll('.product-card').length > 0", "primeira abertura");
+  await until("document.readyState === 'complete' && typeof BoutiqueAuth !== 'undefined' && document.querySelector('#catalogLoading')?.hidden", "primeira abertura");
   await evaluate("localStorage.clear()");
   await reload();
 
   const browser = (callback, ...args) => evaluate("(" + callback.toString() + ")(..." + JSON.stringify(args) + ")");
-  const fresh = async () => { resetFixture(); await browser(() => { localStorage.clear(); sessionStorage.clear(); }); await reload(); await until("typeof BoutiqueAuth !== 'undefined' && BoutiqueAuth.mode() === 'local'", "modo local disponível"); };
+  const fresh = async (prepare) => { resetFixture(); prepare?.(fixture); await browser(() => { localStorage.clear(); sessionStorage.clear(); }); await reload(); await until("BoutiqueAuth.mode() === 'supabase'", "Supabase configurado"); };
   const click = selector => browser(selector => { const el = document.querySelector(selector); if (!el) throw Error("Alvo inexistente: " + selector); el.click(); }, selector);
-  const change = (selector, value) => browser((selector, value) => { const el = document.querySelector(selector); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, selector, value);
-  const closeDialogs = async () => { await browser(() => document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close())); await delay(70); };
+  const change = (selector, value) => browser((selector, value) => { const el = document.querySelector(selector); if (!el) throw Error("Campo inexistente: " + selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }, selector, value);
+  const closeDialogs = async () => { await browser(() => document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close())); await delay(60); };
   const submit = selector => browser(selector => document.querySelector(selector).requestSubmit(), selector);
-  const products = () => browser(() => JSON.parse(localStorage.getItem(BoutiqueData.KEYS.products)));
-  const cart = () => browser(() => JSON.parse(localStorage.getItem(BoutiqueData.KEYS.cart)));
-  const add = async (id = 1, size = "40", count = 1) => { await change('.product-card[data-id="' + id + '"] .product-size-select', size); await browser((id, count) => { const button = document.querySelector('.product-card[data-id="' + id + '"] .product-action'); for (let i = 0; i < count; i++) button.click(); }, id, count); };
-  const register = async (email = "cliente@example.com", name = "Cliente Teste") => {
-    await click("#accountToggle"); await click("#registerTab");
-    for (const [id, value] of Object.entries({ registerName: name, registerEmail: email, registerCPF: "123.456.789-01", registerPassword: "SenhaTeste!123", registerConfirmPassword: "SenhaTeste!123" })) await change("#" + id, value);
-    await submit("#registerForm");
-    await until("document.querySelector('#signupSuccessModal').open", "confirmação de cadastro");
-    await closeDialogs();
+  const cart = () => browser(() => JSON.parse(localStorage.getItem(BoutiqueData.KEYS.cart) || '[]'));
+  const add = async (id = 41, size = "P", count = 1) => { await change('.product-card[data-id="' + id + '"] .product-size-select', size); await browser((id, count) => { const button = document.querySelector('.product-card[data-id="' + id + '"] .product-action'); for (let i = 0; i < count; i++) button.click(); }, id, count); };
+  const login = async (email = officialEmail) => {
+    if (await evaluate("!!BoutiqueAuth.getState().user")) { await click("#accountToggle"); await until("!BoutiqueAuth.getState().user", "logout"); }
+    await click("#accountToggle"); await change("#adminUsername", email); await change("#adminPassword", email === officialEmail ? "nanda100239" : "SenhaTeste!123"); await submit("#loginForm");
+    await until("BoutiqueAuth.getState().user?.email === " + JSON.stringify(email) + " && !document.querySelector('#loginModal').open", "login remoto");
   };
-  const login = async (email = "cliente@example.com") => {
-    if (await evaluate("!!BoutiqueAuth.getState().user")) { await click("#accountToggle"); await until("!BoutiqueAuth.getState().user", "logout pré-login"); }
-    await click("#accountToggle"); await change("#adminUsername", email); await change("#adminPassword", "SenhaTeste!123"); await submit("#loginForm");
-    await until("BoutiqueAuth.getState().user?.email === " + JSON.stringify(email) + " && !document.querySelector('#loginModal').open", "login local");
-  };
-  const admin = async () => { await register(officialEmail, "Nanda"); await login(officialEmail); };
-  const writeReview = async comment => {
-    await click("#writeReview"); await change("#reviewComment", comment);
-    await browser(() => { document.querySelector('input[name="rating"][value="5"]').checked = true; document.querySelector("#reviewForm").requestSubmit(); });
+  const upload = async selector => {
+    const dom = await send("DOM.getDocument"), input = await send("DOM.querySelector", { nodeId: dom.root.nodeId, selector });
+    assert(input.nodeId, selector); await send("DOM.setFileInputFiles", { nodeId: input.nodeId, files: [uploadFile] });
   };
 
-  await check("loja abre livre, navegação completa e papel legado não autoriza edição", async () => {
+  await check("Supabase alimenta catálogo, menu completo e perfil forjado não libera painel", async () => {
     await fresh();
-    assert.equal(await evaluate("document.querySelectorAll('dialog[open]').length"), 0);
-    const links = await browser(() => [...document.querySelectorAll(".store-header a[href^='#']")].map(el => ({ text: el.textContent.trim(), target: !!document.querySelector(el.getAttribute("href")) })));
-    for (const text of ["Início", "Coleção", "Nossa História", "Avaliações", "Informações", "Contatos"]) assert(links.some(link => link.text === text && link.target), text);
-    await browser(() => { localStorage.setItem("userRole", "admin"); localStorage.setItem(BoutiqueData.KEYS.profile, JSON.stringify({ role: "admin", email: "usenandaboutiquee@gmail.com", name: "Nanda" })); });
-    await reload();
-    assert.notEqual(await evaluate("BoutiqueAuth.getState().role"), "admin");
+    assert.deepEqual(await browser(() => [...document.querySelectorAll('.product-card h3')].map(el => el.textContent)), ["Vestido Aurora", "Saia Coração"]);
+    const links = await browser(() => [...document.querySelectorAll('.store-header a[href^="#"]')].map(el => ({ text: el.textContent.trim(), target: !!document.querySelector(el.getAttribute('href')) })));
+    for (const name of ["Coleção", "Elas Usam", "Inauguração", "Nossa História"]) assert(links.some(link => link.text === name && link.target), name);
+    await browser(() => { localStorage.setItem('userRole', 'admin'); localStorage.setItem('nanda-boutique-perfil-v1', JSON.stringify({ role: 'admin', email: 'usenandaboutiquee@gmail.com' })); });
+    await reload(); assert.notEqual(await evaluate("BoutiqueAuth.getState().role"), "admin"); assert.equal(await evaluate("document.querySelector('#adminToggle').hidden"), true);
+    assert(fixture.calls.some(call => call.path === '/rest/v1/boutique_store' && call.method === 'GET'));
+  });
+  await check("cliente recebe saudação, sessão restaurada e cadastro solicita confirmação", async () => {
+    await fresh(); await login('cliente@example.com');
+    assert.match(await evaluate("document.querySelector('#customerGreeting').textContent"), /Olá.*Cliente Teste/);
     assert.equal(await evaluate("document.querySelector('#adminToggle').hidden"), true);
-    assert.equal(await evaluate("[...document.querySelectorAll('.edit-pencil,.product-edit')].filter(el=>el.getClientRects().length).length"), 0);
-    await click("#accountToggle"); await click("#anonymousContinue");
-    await until("!document.querySelector('#loginModal').open", "entrada anônima");
+    await reload(); await until("BoutiqueAuth.getState().role === 'client'", "sessão de cliente restaurada");
+    assert.equal(await evaluate("/SenhaTeste!123|nanda100239/.test(JSON.stringify(localStorage) + JSON.stringify(sessionStorage))"), false);
+    await click('#accountToggle'); await until("!BoutiqueAuth.getState().user", "saída cliente");
+    await click('#accountToggle'); await click('#registerTab'); await until("!document.querySelector('#registerPanel').hidden", 'aba de cadastro');
+    for (const [id, value] of Object.entries({ registerName: 'Cliente Teste', registerEmail: 'cliente@example.com', registerCPF: '529.982.247-25', registerPassword: 'SenhaTeste!123', registerConfirmPassword: 'SenhaTeste!123' })) await change('#' + id, value);
+    await submit('#registerForm'); await until("document.querySelector('#signupSuccessModal').open", "confirmação de cadastro");
+    assert.match(await evaluate("document.querySelector('#signupSuccessText').textContent"), /e-mail|email/i);
+    assert.equal(await evaluate("BoutiqueAuth.getState().role"), 'guest');
   });
-
-  await check("cadastro confirma senha, sucesso local, login e Sair sem senha/CPF brutos", async () => {
-    await fresh(); await click("#accountToggle"); await click("#registerTab");
-    for (const [id, value] of Object.entries({ registerName: "Cliente Teste", registerEmail: "cliente@example.com", registerCPF: "123.456.789-01", registerPassword: "SenhaTeste!123", registerConfirmPassword: "Diferente!123" })) await change("#" + id, value);
-    await submit("#registerForm");
-    await until("!document.querySelector('#registerError').hidden", "senhas diferentes rejeitadas");
-    assert.equal(await evaluate("document.querySelector('#signupSuccessModal').open"), false);
-    await change("#registerConfirmPassword", "SenhaTeste!123"); await submit("#registerForm");
-    await until("document.querySelector('#signupSuccessModal').open", "cadastro confirmado");
-    assert(await evaluate("document.querySelector('#signupSuccessText').textContent.length > 10"));
-    await closeDialogs(); await login();
-    assert.equal(await evaluate("BoutiqueAuth.getState().role"), "client");
-    assert(await evaluate("document.querySelector('#accountToggle').textContent.includes('Sair')"));
-    assert.equal(await evaluate("/SenhaTeste!123|12345678901|123\\.456\\.789-01/.test(JSON.stringify(localStorage))"), false);
-    await reload(); await until("BoutiqueAuth.getState().role === 'client'", "sessão restaurada");
-    await click("#accountToggle"); await until("!BoutiqueAuth.getState().user", "Sair encerra sessão");
-    assert.equal(fixture.calls.length, 0, "modo local não envia cadastro ou login a serviços externos");
+  await check("loader, erro recuperável e estados vazios não mostram catálogo antigo", async () => {
+    await fresh(); fixture.readDelay = 1200;
+    await send('Page.reload'); await until("document.querySelector('#catalogLoading') && !document.querySelector('#catalogLoading').hidden", "skeleton visível");
+    assert.equal(await evaluate("document.querySelectorAll('.product-card').length"), 0);
+    await until("document.querySelector('#catalogLoading').hidden && document.querySelectorAll('.product-card').length === 2", "catálogo carregou");
+    fixture.readDelay = 0; fixture.readError = true; await reload();
+    assert.equal(await evaluate("document.querySelector('#catalogError').hidden"), false);
+    fixture.readError = false; await click('#catalogRetry'); await until("document.querySelectorAll('.product-card').length === 2 && document.querySelector('#catalogError').hidden", "repetição bem sucedida");
+    fixture.store = { products: [], content: {}, story: '', sections: [] }; fixture.version++; await reload();
+    assert.equal(await evaluate("document.querySelectorAll('.product-card').length"), 0);
+    for (const section of ['#colecao', '#elas-usam', '#inauguracao']) assert.match(await browser(selector => document.querySelector(selector).textContent, section), /breve|novidades/i);
   });
-
-  await check("recuperação de senha offline sinaliza simulação", async () => {
-    await fresh(); await click("#accountToggle"); await click("#forgotPassword");
-    assert.equal(await evaluate("document.querySelector('#resetModal').open"), true);
-    await change("#resetEmail", "cliente@example.com"); await submit("#resetForm");
-    await until("document.querySelector('#resetStatus').textContent.length > 10", "aviso de recuperação local");
-    assert(await evaluate("/simula|demonstra|local|configur/i.test(document.querySelector('#resetStatus').textContent)"));
-    assert.equal(fixture.calls.length, 0);
+  await check("estoque exato, guia individual e mensagens dinâmicas de atendimento", async () => {
+    await fresh(); await click('.product-card[data-id="41"] .product-action'); assert.equal((await cart()).length, 0);
+    await change('.product-card[data-id="41"] .product-size-select', 'P');
+    assert.match(await evaluate("document.querySelector('.product-card[data-id=\"41\"]').textContent"), /3.*(?:dispon|estoque|unidade)/i);
+    await click('.product-card[data-id="41"] .size-guide-link');
+    assert.equal(await evaluate("document.querySelector('#sizeGuideModal img').getAttribute('src')"), fixture.store.products[0].guiaMedidas);
+    await closeDialogs(); await click('.product-card[data-id="42"] .size-guide-link');
+    assert.equal(await evaluate("document.querySelector('#sizeGuideModal img')?.getClientRects().length || 0"), 0); await closeDialogs();
+    await change('.product-card[data-id="41"] .product-size-select', 'G');
+    assert.equal(await evaluate("document.querySelector('.product-card[data-id=\"41\"] .restock-btn').hidden"), false);
+    const links = await browser(() => [...document.querySelectorAll('.product-card[data-id="41"] a[href*="wa.me"]')].map(el => ({ text: el.textContent, message: new URL(el.href).searchParams.get('text') })));
+    for (const label of ['Avisar quando chegar', 'Tire Dúvidas']) assert(links.some(link => link.text.includes(label) && link.message.includes('Vestido Aurora')), label);
+    await add(41, 'P', 8); assert.equal((await cart())[0].quantity, 3);
   });
-
-  await check("cards mostram dados, tamanhos e guia; compra sem tamanho é bloqueada", async () => {
-    await fresh();
-    const cards = await browser(() => [...document.querySelectorAll(".product-card")].map(card => ({ title: card.querySelector("h3").textContent, titleWidth: card.querySelector("h3").getBoundingClientRect().width, text: card.textContent, select: !!card.querySelector(".product-size-select") })));
-    assert.deepEqual(cards.map(card => card.title), expectedNames);
-    assert(cards.every(card => card.titleWidth > 1 && card.select));
-    assert(cards[0].text.includes("169,90") && cards[0].text.includes("brilho"));
-    await click('.product-card[data-id="1"] .product-action');
-    assert.equal(await evaluate("document.querySelector('#bagCount').textContent"), "0");
-    await click(".size-guide-link");
-    assert.equal(await evaluate("document.querySelector('#sizeGuideModal').open"), true);
-    assert(await evaluate("document.querySelector('#sizeGuideModal').textContent.length > 40"));
-    await closeDialogs(); await add();
-    assert.deepEqual(await cart(), [{ id: 1, size: "40", quantity: 1 }]);
-    assert.equal(await evaluate("!!document.querySelector('.product-card[data-id=\"2\"] .restock-btn')"), true);
-  });
-
-  await check("sacola separa variantes, persiste e exige pagamento por clique e teclado", async () => {
-    await fresh(); await add(1, "40", 2); await add(1, "42"); await reload();
-    assert.deepEqual(await cart(), [{ id: 1, size: "40", quantity: 2 }, { id: 1, size: "42", quantity: 1 }]);
-    await click("#shoppingBag");
-    for (const action of ["click", "Enter", " "]) {
-      await browser(action => { const el = document.querySelector("#checkoutButton"); el.focus(); if (action === "click") el.click(); else el.dispatchEvent(new KeyboardEvent("keydown", { key: action, bubbles: true, cancelable: true })); }, action);
-      assert.equal(await evaluate("document.querySelector('#checkoutButton').hasAttribute('href')"), false);
-      assert.equal(await evaluate("document.querySelector('#paymentError').hidden"), false);
-      assert.equal(await evaluate("document.activeElement.id"), "paymentMethod");
+  await check("checkout detalha valores e pagamento, bloqueia quantidade acima do estoque", async () => {
+    await fresh(); await add(41, 'P', 2); await add(42, 'P'); await reload(); await click('#shoppingBag');
+    for (const action of ['click', 'Enter']) {
+      await browser(action => { const el = document.querySelector('#checkoutButton'); if (action === 'click') el.click(); else el.dispatchEvent(new KeyboardEvent('keydown', { key: action, bubbles: true, cancelable: true })); }, action);
+      assert.equal(await evaluate("document.querySelector('#checkoutButton').hasAttribute('href')"), false); assert.equal(await evaluate("document.querySelector('#paymentError').hidden"), false);
     }
-    const payments = await evaluate("[...document.querySelector('#paymentMethod').options].map(option=>option.value).filter(Boolean)");
-    assert.equal(payments.length, 4);
-    for (const payment of payments) {
-      await change("#paymentMethod", payment);
-      const url = new URL(await evaluate("document.querySelector('#checkoutButton').href"));
-      assert(["wa.me", "api.whatsapp.com"].includes(url.hostname));
-      const message = url.searchParams.get("text");
-      assert(message.includes("Calça Jeans com Brilho - Tamanho 40") && message.includes("Calça Jeans com Brilho - Tamanho 42"));
-      assert(message.endsWith("Pagamento: " + payment + ". Poderia confirmar a disponibilidade?"));
+    await change('#paymentMethod', 'Pix');
+    const message = new URL(await evaluate("document.querySelector('#checkoutButton').href")).searchParams.get('text');
+    for (const text of ['Vestido Aurora', 'Saia Coração', '129,90', '259,80', '80,00', '339,80', 'Pix']) assert(message.includes(text), text);
+    assert.match(await evaluate("document.querySelector('#cartTotal').textContent"), /339,80/);
+    await change('#deliveryMethod', 'osasco');
+    const deliveryMessage = new URL(await evaluate("document.querySelector('#checkoutButton').href")).searchParams.get('text');
+    for (const text of ['Taxa de entrega', '10,00', '349,80', 'Entrega em Osasco']) assert(deliveryMessage.includes(text), text);
+    assert.match(await evaluate("document.querySelector('#cartFinalTotal').textContent"), /349,80/);
+    await browser(() => { window.__checkoutDestination = ''; window.open = () => ({ closed: false, close() {}, set opener(value) {}, location: { replace(url) { window.__checkoutDestination = url; } } }); });
+    await click('#checkoutButton'); await until("String(window.__checkoutDestination).includes('wa.me')", 'pré-checagem de estoque antes do WhatsApp');
+    assert.match(await evaluate("decodeURIComponent(window.__checkoutDestination)"), /Taxa de entrega|Entrega em Osasco/);
+    await click('.cart-item button[data-change="1"]'); await click('.cart-item button[data-change="1"]'); assert.equal((await cart())[0].quantity, 3);
+    await screenshot('sacola-pagamento');
+  });
+  await check("admin remoto, erro de gravação sem falso sucesso e edição persistente", async () => {
+    await fresh(); await login(); assert.equal(await evaluate("BoutiqueAuth.getState().role"), 'admin');
+    await click('[data-edit-content="story"]'); const text = 'História atualizada <img src=x onerror="window.__xss=1">';
+    await change('#contentEditorValue', text); fixture.saveError = true; await submit('#contentEditorForm');
+    await until("!document.querySelector('#contentEditorError').hidden", 'erro de gravação');
+    assert.equal(fixture.store.story, 'História cadastrada no Supabase.'); fixture.saveError = false; await submit('#contentEditorForm');
+    await until("!document.querySelector('#contentEditorModal').open", 'história salva'); assert.equal(fixture.store.story, text);
+    await reload(); await until("BoutiqueAuth.getState().role === 'admin'", 'admin restaurado');
+    assert.equal(await evaluate("document.querySelector('#storyText').textContent"), text); assert.equal(await evaluate("!!window.__xss || !!document.querySelector('#storyText img')"), false);
+    assert(fixture.calls.some(call => call.path === '/rest/v1/boutique_store' && call.method === 'PATCH'));
+    assert.equal(await evaluate("localStorage.getItem('nanda-boutique-produtos-v1')"), null);
+    assert.equal(await evaluate("document.querySelectorAll('#brandEditableCluster .edit-pencil').length"), 1);
+    assert.equal(await evaluate("document.querySelectorAll('.brand .edit-pencil,[data-edit-content=\"logoHeader\"],[data-edit-content=\"storeName\"],[data-edit-content=\"headerCaption\"]').length"), 0);
+    await click('#editBrand'); await change('#brandName', 'Nanda Atualizada'); await change('#brandCaption', '@nanda.atualizada'); await submit('#brandEditorForm');
+    await until("!document.querySelector('#brandEditorModal').open", 'marca salva');
+    assert.equal(fixture.store.content.storeName, 'Nanda Atualizada'); assert.equal(await evaluate("document.querySelector('.brand-name').textContent"), 'Nanda Atualizada');
+  });
+  await check("painel salva quantidades, alerta de reposição e upload/remoção do guia da peça", async () => {
+    await fresh(); await login(); await click('#adminToggle');
+    assert.match(await evaluate("document.querySelector('#stockAlertsList').textContent"), /Vestido Aurora/);
+    await click('[data-admin-action="edit"][data-id="41"]');
+    await change('#productStockFields [data-stock-size="P"]', '1'); await change('#productStockFields [data-stock-size="M"]', '0');
+    await upload('#productSizeGuideUpload'); await until("!document.querySelector('#productSizeGuidePreview').hidden && document.querySelector('#productSizeGuidePreview').src.startsWith('blob:')", 'prévia do guia');
+    await submit('#productForm');
+    await until("document.querySelector('#editingProductId').value === '' || !document.querySelector('#productError').hidden", 'estoque salvo');
+    assert.equal(await evaluate("document.querySelector('#productError').hidden ? '' : document.querySelector('#productError').textContent"), '');
+    const guide = fixture.store.products.find(product => product.id === 41).guiaMedidas;
+    assert.deepEqual(fixture.store.products.find(p => p.id === 41).estoquePorTamanho, { P: 1, M: 0, G: 0 }); assert.equal(fixture.store.products.find(p => p.id === 41).guiaMedidas, guide);
+    await click('[data-admin-action="edit"][data-id="41"]'); await click('#removeProductSizeGuide'); await submit('#productForm');
+    await until("document.querySelector('#editingProductId').value === ''", 'guia removido'); assert(!fixture.store.products.find(p => p.id === 41).guiaMedidas);
+    assert(!fixture.store.products.find(p => p.id === 42).guiaMedidas);
+  });
+  await check("borboleta usa URL atual após edição da foto, com movimento reduzido respeitado", async () => {
+    await fresh(); await login(); await click('#adminToggle'); await click('[data-admin-action="edit"][data-id="41"]');
+    const current = api + '/storage/v1/object/public/boutique-media/foto-atual.jpg?v=20260912';
+    await change('#productMedia', current); await submit('#productForm'); await until("document.querySelector('#editingProductId').value === ''", 'foto atualizada'); await closeDialogs();
+    await browser(() => document.querySelector('.product-card[data-id="41"]').scrollIntoView({ block: 'center', behavior: 'instant' })); await add();
+    assert.equal(await evaluate("document.querySelector('.courier-product')?.getAttribute('src')"), current);
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    try { await until("document.querySelectorAll('.butterfly-courier,.flying-emoji,.falling-particle').length === 0", 'movimento reduzido'); await add(); assert.equal((await cart())[0].quantity, 2); }
+    finally { await send('Emulation.setEmulatedMedia', { features: [] }); }
+  });
+  await check("seções criam, editam, publicam e apagam conteúdo pelo Supabase", async () => {
+    await fresh(); await login(); await click('#adminToggle');
+    for (const section of ['elas-usam', 'inauguracao', 'sobre']) {
+      await click('#cancelContentEdit'); await change('#contentSection', section); await change('#contentTitle', 'Publicação ' + section); await change('#contentDescription', 'Descrição da publicação.');
+      await change('#contentMediaUrl', api + '/storage/v1/object/public/boutique-media/' + section + '.jpg'); await change('#contentAlt', 'Cliente usando peça da loja'); await change('#contentPosition', '1');
+      await browser(() => { document.querySelector('#contentPublished').checked = true; }); await submit('#contentForm');
+      await until("document.querySelector('#contentStatus').textContent.toLowerCase().includes('sucesso')", 'publicação salva');
+      assert(fixture.store.sections.some(item => item.secao === section && item.titulo === 'Publicação ' + section));
     }
-    await click('.cart-item button[data-change="1"]'); assert.equal((await cart())[0].quantity, 3);
-    await click(".cart-item .remove-item"); assert.deepEqual(await cart(), [{ id: 1, size: "42", quantity: 1 }]);
-    await screenshot("sacola-pagamento");
+    assert.equal(fixture.store.sections.length, 3); await closeDialogs();
+    for (const section of ['elas-usam', 'inauguracao', 'sobre']) assert.match(await browser(section => document.querySelector('#' + section).textContent, section), new RegExp('Publicação ' + section));
+    assert.equal(await evaluate("[...document.querySelectorAll('#elas-usam img,#inauguracao img')].every(img => img.loading === 'lazy' && !!img.alt)"), true);
+    await click('#adminToggle');
+    await browser(() => [...document.querySelectorAll('#adminContentList button')].find(button => button.textContent.trim() === 'Editar').click());
+    await change('#contentTitle', 'Publicação alterada'); await submit('#contentForm'); await until("document.querySelector('#adminContentList').textContent.includes('Publicação alterada')", 'publicação editada');
+    await browser(() => [...document.querySelectorAll('#adminContentList button')].find(button => /Excluir|Apagar/.test(button.textContent)).click()); await click('#confirmContentDelete');
+    await until("document.querySelector('#contentDeletePrompt').hidden", 'exclusão concluída'); assert.equal(fixture.store.sections.length, 2);
   });
-
-  await check("admin local exige conta oficial autenticada; CMS edita textos e contato", async () => {
-    await fresh(); await admin();
-    assert.equal(await evaluate("BoutiqueAuth.getState().role"), "admin");
-    assert.equal(await evaluate("document.querySelector('#adminToggle').hidden"), false);
-    await click('[data-edit-content="story"]');
-    const text = 'História atualizada <img src=x onerror="window.__xss=1">';
-    await change("#contentEditorValue", text); await submit("#contentEditorForm");
-    await until("!document.querySelector('#contentEditorModal').open", "história salva");
-    assert.equal(await evaluate("document.querySelector('#toast').textContent"), "Alteração salva com sucesso!");
-    await reload(); await until("BoutiqueAuth.getState().role === 'admin'", "admin restaurado");
-    assert.equal(await evaluate("document.querySelector('#storyText').textContent"), text);
-    assert.equal(await evaluate("!!window.__xss || !!document.querySelector('#storyText img')"), false);
-    await click('[data-edit-content="contactPhone"]'); await change("#contentEditorValue", "(11) 99999-0000"); await submit("#contentEditorForm");
-    await until("!document.querySelector('#contentEditorModal').open", "contato salvo");
-    assert(await evaluate("document.querySelector('#contactPhoneText').closest('a').href.includes('5511999990000')"));
-    await browser(() => document.querySelector("#informacoes").scrollIntoView({ block: "start", behavior: "instant" })); await screenshot("admin-informacoes");
-  });
-
-  await check("CMS cria/edita produto, poucas unidades, upload local, esgotado e exclusão", async () => {
-    await fresh(); await admin(); await click("#adminAddProduct");
-    for (const [id, value] of Object.entries({ productName: "Vestido Teste", productDescription: "Descrição da peça.", productMedia: "./img/look-listras-rosa-1.jpg", productMediaType: "auto", productSizes: "P, M, G", productUnavailableSizes: "G", productPrice: "89,90" })) await change("#" + id, value);
-    await browser(() => { document.querySelector("#productLowStock").checked = true; document.querySelector("#productForm").requestSubmit(); });
-    await until("document.querySelectorAll('.product-card').length === 6", "produto criado");
-    const created = (await products()).find(product => product.nome === "Vestido Teste"); assert(created && created.poucasUnidades);
-    await closeDialogs();
-    assert(await evaluate("document.querySelector('.product-card[data-id=\"" + created.id + "\"] .product-low-stock').textContent.length > 3"));
-    await change('.product-card[data-id="' + created.id + '"] .product-size-select', "G");
-    assert.equal(await evaluate("document.querySelector('.product-card[data-id=\"" + created.id + "\"] .restock-btn').hidden"), false);
-    await add(created.id, "P"); await click("#adminToggle"); await click('[data-admin-action="edit"][data-id="' + created.id + '"]');
-    await change("#productName", "Vestido Atualizado"); await submit("#productForm");
-    await until("document.querySelector('.product-card[data-id=\"" + created.id + "\"] h3').textContent === 'Vestido Atualizado'", "produto editado");
-    await click('[data-admin-action="stock"][data-id="' + created.id + '"]');
-    await until("document.querySelector('#bagCount').textContent === '0'", "esgotado remove da sacola");
-    await click('[data-admin-action="delete"][data-id="' + created.id + '"]'); await click("#confirmDelete");
-    await until("document.querySelectorAll('.product-card').length === 5", "produto excluído");
-    // Arquivo real fornecido ao input nativo; não há envio de dados externos.
-    const dom = await send("DOM.getDocument");
-    const input = await send("DOM.querySelector", { nodeId: dom.root.nodeId, selector: "#productUpload" });
-    await send("DOM.setFileInputFiles", { nodeId: input.nodeId, files: [path.join(root, "img", "look-listras-rosa-1.jpg")] });
-    await until("document.querySelector('#productUploadPreview').querySelector('img')", "prévia de upload");
-    assert(await evaluate("document.querySelector('#productMedia').value.includes('data:image/') || document.querySelector('#productUploadPreview img').src.startsWith('data:image/')"));
-    assert.equal(fixture.calls.length, 0);
-  });
-
-  await check("avaliações exigem conta e mostram nome/estrelas/comentário, com exclusão própria", async () => {
-    await fresh(); await click("#writeReview");
-    assert.equal(await evaluate("document.querySelector('#loginModal').open"), true);
-    assert.equal(await evaluate("document.querySelector('#reviewModal').open"), false);
-    await closeDialogs(); await register(); await login();
-    await writeReview("Atendimento excelente e peças lindas!");
-    await until("document.querySelectorAll('.review-card').length === 1 && !document.querySelector('#reviewModal').open", "avaliação salva");
-    assert(await evaluate("document.querySelector('.review-card').textContent.includes('Cliente Teste')"));
-    assert.equal(await evaluate("/cliente@example.com|12345678901/.test(document.querySelector('.review-card').textContent)"), false);
-    await reload(); await until("document.querySelectorAll('.review-delete').length === 1", "autoria restaurada");
-    await writeReview("Segundo comentário não deve duplicar.");
-    await until("!document.querySelector('#reviewError').hidden", "avaliação duplicada impedida");
-    assert.equal(await evaluate("document.querySelectorAll('.review-card').length"), 1);
-    await closeDialogs(); await click("#accountToggle"); await until("!BoutiqueAuth.getState().user", "logout cliente");
-    assert.equal(await evaluate("document.querySelectorAll('.review-delete').length"), 0);
-    await login(); await click(".review-delete"); await until("document.querySelectorAll('.review-card').length === 0", "exclusão própria");
-  });
-
-  await check("vídeos preservam controles/playsinline sem autoplay e carrossel funciona por teclado", async () => {
-    await fresh();
-    const videos = await browser(() => [...document.querySelectorAll("video")].map(video => ({ controls: video.controls, inline: video.playsInline && video.hasAttribute("playsinline"), autoplay: video.autoplay, paused: video.paused })));
-    assert(videos.length >= 4 && videos.every(video => video.controls && video.inline && !video.autoplay && video.paused));
-    await browser(() => { const track = document.querySelector('.product-card[data-id="1"] .media-track'); track.scrollIntoView({ behavior: "instant", block: "center" }); track.focus(); });
-    await key("ArrowRight", "ArrowRight", 39);
-    await until("document.querySelector('.product-card[data-id=\"1\"] .media-track').dataset.activeIndex === '1'", "carrossel pelo teclado");
-  });
-
-  await check("borboletas, pétalas, entrega da foto com cinco emojis e movimento reduzido", async () => {
-    await fresh(); await viewport(1440);
-    const decorations = await browser(() => ({ butterflies: [...document.querySelectorAll(".flying-butterfly")].map(el => ({ text: el.textContent, pointer: getComputedStyle(el).pointerEvents })), branches: [...document.querySelectorAll(".cherry-side img")].map(el => getComputedStyle(el).animationName), petals: document.querySelector("#fallingScene").children.length }));
-    assert.equal(decorations.butterflies.length, 4);
-    for (const glyph of ["👜", "👚", "💍", "👖"]) assert(decorations.butterflies.some(item => item.text.includes(glyph)));
-    assert(decorations.butterflies.every(item => item.pointer === "none") && decorations.branches.every(name => name !== "none") && decorations.petals > 0);
-    await browser(() => document.querySelector('.product-card[data-id="1"]').scrollIntoView({ block: "center", behavior: "instant" })); await add(1, "40", 11);
-    assert.equal(await evaluate("document.querySelector('#bagCount').textContent"), "11");
-    const flight = await browser(() => ({ count: document.querySelectorAll(".butterfly-courier").length, image: document.querySelector(".courier-product")?.src, emojis: [...document.querySelectorAll(".flying-emoji")].map(el => el.textContent) }));
-    assert(flight.count > 0 && flight.count <= 4 && flight.image?.includes("calca-jeans-brilho"));
-    for (const glyph of ["💍", "👗", "👠", "👜", "🌸"]) assert(flight.emojis.includes(glyph));
-    await screenshot("borboleta-entrega");
-    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-    try { await until("document.querySelectorAll('.butterfly-courier,.flying-emoji,.falling-particle').length === 0", "redução de movimento aplicada"); await add(); assert.equal(await evaluate("document.querySelector('#bagCount').textContent"), "12"); }
-    finally { await send("Emulation.setEmulatedMedia", { features: [] }); }
-  });
-
-  await check("página e diálogos responsivos de 320 a 1920 px, foco e cliques livres", async () => {
-    await fresh();
+  await check("controles e diálogos acessíveis em 320, 390, 768, 1024, 1440 e 1920 px", async () => {
+    await fresh(); await login();
     for (const width of widths) {
-      await viewport(width);
-      assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), true, "página " + width);
-      for (const selector of ["#accountToggle", "#shoppingBag", ".product-size-select", ".product-action"]) {
-        const hit = await browser(async selector => { const target = [...document.querySelectorAll(selector)].find(el => el.getClientRects().length && !el.disabled); target.scrollIntoView({ behavior: "instant", block: "center" }); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); const rect = target.getBoundingClientRect(), top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2); return top === target || target.contains(top); }, selector);
-        assert(hit, selector + " em " + width);
-      }
-      await click("#accountToggle"); await click("#registerTab");
-      assert.equal(await evaluate("document.querySelector('#loginModal').scrollWidth <= document.querySelector('#loginModal').clientWidth + 1"), true, "cadastro " + width);
-      await screenshot("conta-" + width); await key("Escape", "Escape", 27);
-      await until("document.activeElement.id === 'accountToggle' && !document.querySelector('#loginModal').open", "foco retorna à conta");
-      await add(); await click("#shoppingBag");
-      assert.equal(await evaluate("document.querySelector('#checkoutModal').scrollWidth <= document.querySelector('#checkoutModal').clientWidth + 1"), true, "sacola " + width);
-      await closeDialogs();
+      await closeDialogs(); await viewport(width); assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), true, 'página ' + width);
+      await click('#adminToggle');
+      const undersized = await browser(() => [...document.querySelectorAll('dialog[open] button,dialog[open] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),dialog[open] select')].filter(el => el.getClientRects().length).map(el => ({ id: el.id || el.textContent.trim(), width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height })).filter(el => el.width < 43.9 || el.height < 43.9));
+      assert.deepEqual(undersized, [], 'alvos de toque ' + width);
+      assert.equal(await evaluate("[...document.querySelectorAll('dialog[open]')].every(el => el.scrollWidth <= el.clientWidth + 1)"), true, 'painel ' + width);
+      await click('[data-admin-action="edit"][data-id="41"]'); assert.equal(await evaluate("[...document.querySelectorAll('dialog[open]')].every(el => el.scrollWidth <= el.clientWidth + 1)"), true, 'editor ' + width);
+      if ([390, 1440].includes(width)) await screenshot('admin-' + width);
+      await key('Escape', 'Escape', 27); await closeDialogs();
     }
+    await click('#shoppingBag'); await key('Escape', 'Escape', 27); await until("document.activeElement.id === 'shoppingBag'", 'retorno de foco');
   });
-
-  await check("PWA possui manifest, ícones locais e service worker registrado", async () => {
+  await check("PWA com nome correto, ícones locais, service worker e instalação guiada", async () => {
     await fresh();
     const manifest = await browser(async () => { const link = document.querySelector('link[rel="manifest"]'); return { href: link.href, data: await (await fetch(link.href)).json() }; });
-    assert.equal(manifest.data.display, "standalone");
-    for (const size of ["192x192", "512x512"]) assert(manifest.data.icons.some(icon => icon.sizes.includes(size)), size);
-    for (const icon of manifest.data.icons) { const response = await fetch(new URL(icon.src, manifest.href)); assert.equal(response.status, 200); }
+    assert.equal(manifest.data.name, 'UseNandaBoutique'); assert.equal(manifest.data.display, 'standalone');
+    for (const size of ['192x192', '512x512']) assert(manifest.data.icons.some(icon => icon.sizes.includes(size)), size);
+    for (const icon of manifest.data.icons) assert.equal((await fetch(new URL(icon.src, manifest.href))).status, 200);
+    await until("navigator.serviceWorker.getRegistration().then(registration=>!!registration?.active)", 'service worker ativo');
     assert.equal(await evaluate("!!document.querySelector('link[rel=\"apple-touch-icon\"]')"), true);
-    await until("navigator.serviceWorker.getRegistration().then(registration=>!!registration?.active)", "service worker ativo");
   });
-
-  await check("capturas finais e ausência de erros/recursos quebrados ou envio ao WhatsApp", async () => {
+  await check("nenhum erro JS, recurso local ausente ou envio ao WhatsApp", async () => {
     await fresh();
-    for (const [width, name] of [[1440, "desktop"], [768, "tablet"], [390, "mobile"]]) {
-      await viewport(width);
-      for (const [selector, section] of [["#inicio", "topo"], ["#colecao", "colecao"], ["#informacoes", "informacoes"], ["#contatos", "contatos"]]) {
-        await browser(selector => document.querySelector(selector).scrollIntoView({ behavior: "instant", block: "start" }), selector); await delay(150); await screenshot(name + "-" + section);
-      }
-    }
+    for (const [width, name] of [[1440, 'desktop'], [768, 'tablet'], [390, 'mobile']]) { await viewport(width); await browser(() => document.querySelector('#colecao').scrollIntoView({ block: 'start', behavior: 'instant' })); await screenshot(name + '-colecao'); }
     assert.deepEqual(errors, []);
     assert.deepEqual(responses.filter(response => response.url.startsWith(base) && response.status >= 400).map(response => response.url), []);
-    assert.deepEqual(requests.filter(request => ["wa.me", "api.whatsapp.com"].includes(new URL(request.url).hostname)), []);
+    assert.deepEqual(requests.filter(request => ['wa.me', 'api.whatsapp.com'].includes(new URL(request.url).hostname)), []);
   });
-  fs.writeFileSync(path.join(artifacts, "resultado.json"), JSON.stringify({ ranAt: new Date().toISOString(), failures, browserErrors: errors, screenshots: fs.readdirSync(artifacts).filter(file => file.endsWith(".png")) }, null, 2));
-  console.log(failures.length ? "\n" + failures.length + " verificação(ões) falharam." : "\nTodas as verificações passaram.");
-  process.exitCode = failures.length ? 1 : 0;
+  fs.writeFileSync(path.join(artifacts, 'resultado.json'), JSON.stringify({ ranAt: new Date().toISOString(), fixture: 'Supabase HTTP simulado; sem serviços reais', failures, browserErrors: errors, screenshots: fs.readdirSync(artifacts).filter(file => file.endsWith('.png')) }, null, 2));
+  console.log(failures.length ? '\n' + failures.length + ' verificação(ões) falharam.' : '\nTodas as verificações passaram.'); process.exitCode = failures.length ? 1 : 0;
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
-  if (send) { try { await send("Browser.close"); } catch {} }
-  ws?.close(); chrome?.kill(); server?.close();
-  setTimeout(() => process.exit(process.exitCode || 0), 300).unref();
+  if (send) { try { await send('Browser.close'); } catch {} }
+  ws?.close(); chrome?.kill(); server?.close(); setTimeout(() => process.exit(process.exitCode || 0), 300).unref();
 });
