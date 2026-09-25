@@ -3,7 +3,7 @@
  * A lista fechada impede armazenar contas, API, estoque ou mídias do Supabase.
  */
 'use strict';
-const VERSION = '2026-09-13-v1';
+const VERSION = '2026-09-24-v2';
 const CACHE_PREFIX = 'usenandaboutique-shell-';
 const SHELL_CACHE = CACHE_PREFIX + VERSION;
 const SHELL_FILES = [

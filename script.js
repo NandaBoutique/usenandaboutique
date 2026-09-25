@@ -188,7 +188,7 @@ function initBoutique() {
     const state = A?.getState();
     profile = state?.verified && state.user ? D.normalizeProfile({ email: state.user.email, name: state.user.name, ownerId: state.user.id }) : D.normalizeProfile(null);
     if (isAdmin()) profile.role = 'admin';
-    syncProfile(); renderProducts(); renderReviews();
+    syncProfile(); renderProducts(); renderReviews(); renderSections();
   }
   function syncProfile() {
     const admin = isAdmin(), signedIn = isSignedIn();
@@ -199,6 +199,7 @@ function initBoutique() {
     byId('adminAddProduct').hidden = !admin;
     byId('editBrand').hidden = !admin;
     document.querySelectorAll('.edit-pencil').forEach(button => { button.hidden = !admin; });
+    document.querySelectorAll('[data-community-admin]').forEach(panel => { panel.hidden = !admin; });
     byId('accountLabel').textContent = signedIn ? 'Sair' : 'Entrar';
     byId('accountToggle').setAttribute('aria-label', signedIn ? 'Sair da conta' : 'Entrar ou criar conta');
     if (signedIn) byId('accountToggle').removeAttribute('aria-haspopup'); else byId('accountToggle').setAttribute('aria-haspopup', 'dialog');
@@ -221,6 +222,35 @@ function initBoutique() {
     document.body.classList.add('modal-open');
     BoutiqueMedia.refresh();
   }
+
+  // As páginas editoriais compartilham o mesmo documento para preservar a sessão,
+  // o payload da loja e os IDs usados pelo painel administrativo.
+  const editorialRoutes = new Set(['elas-usam', 'inauguracao']);
+  const homeRoutes = new Set(['inicio', 'colecao', 'sobre', 'avaliacoes', 'informacoes', 'contatos', 'frete']);
+  function currentHash() {
+    try { return decodeURIComponent(location.hash.slice(1)).toLowerCase(); }
+    catch { return ''; }
+  }
+  function syncRoute({ focus = false } = {}) {
+    const hash = currentHash(), route = editorialRoutes.has(hash) ? hash : '';
+    const home = byId('homeView'), footer = byId('contatos');
+    home.hidden = !!route;
+    footer.hidden = !!route;
+    for (const routeName of editorialRoutes) byId(routeName).hidden = routeName !== route;
+    document.body.classList.toggle('editorial-route-active', !!route);
+    document.querySelectorAll('[data-route-link]').forEach(link => {
+      if (link.dataset.routeLink === route) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+    requestAnimationFrame(() => {
+      if (route) {
+        window.scrollTo(0, 0);
+        if (focus) byId(route).focus({ preventScroll: true });
+      } else if (homeRoutes.has(hash)) byId(hash)?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      BoutiqueMedia.refresh();
+    });
+  }
+  window.addEventListener('hashchange', () => syncRoute({ focus: true }));
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('close', () => {
       if (document.querySelector('dialog[open]')) return;
@@ -255,7 +285,7 @@ function initBoutique() {
   function showLogin(trigger) { selectAuthTab('login'); syncProfile(); openDialog('loginModal', trigger); }
   byId('accountToggle').addEventListener('click', event => { if (isSignedIn()) logout(); else showLogin(event.currentTarget); });
   byId('anonymousContinue').addEventListener('click', () => { byId('loginModal').close(); notify('Fique à vontade para explorar a coleção.'); });
-  function openAdminAccess(event) { if (adminAllowed()) { renderAdmin(); openDialog('adminModal', event.currentTarget.closest('dialog') ? byId('adminToggle') : event.currentTarget); } }
+  function openAdminAccess(event) { if (adminAllowed()) { clearContentContext(); renderAdmin(); openDialog('adminModal', event.currentTarget.closest('dialog') ? byId('adminToggle') : event.currentTarget); } }
   byId('adminToggle').addEventListener('click', openAdminAccess);
   byId('accountAdmin').addEventListener('click', openAdminAccess);
   function openStockAlerts(event) { if (adminAllowed()) { renderStockAlerts(); openDialog('stockAlertsModal', event.currentTarget); } }
@@ -549,7 +579,7 @@ function initBoutique() {
   }
   function clearUploads() { uploadPreviews.forEach(url => URL.revokeObjectURL(url)); uploadPreviews = []; byId('productUploadPreview').replaceChildren(); byId('uploadStatus').textContent = ''; }
   function resetProductForm() { retainedMedia = []; retainedGuide = ''; draftStock = {}; clearUploads(); byId('productForm').reset(); byId('editingProductId').value = ''; byId('productFormTitle').textContent = 'Adicionar novo produto'; byId('saveProduct').textContent = 'Adicionar produto'; byId('cancelProductEdit').hidden = true; clearFormError('productError'); renderStockFields(false); renderGuidePreview(); }
-  function openNewProduct(event) { if (!adminAllowed()) return; resetProductForm(); renderAdmin(); openDialog('adminModal', event.currentTarget); byId('productName').focus(); }
+  function openNewProduct(event) { if (!adminAllowed()) return; clearContentContext(); resetProductForm(); renderAdmin(); openDialog('adminModal', event.currentTarget); byId('productName').focus(); }
   byId('adminAddProduct').addEventListener('click', openNewProduct);
   function validateImageFile(file) {
     if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024 || !file.size) throw new Error('Escolha uma foto JPG, PNG ou WebP com até 5 MB.');
@@ -720,11 +750,26 @@ function initBoutique() {
     try { if (Number(byId('editingProductId').value) === pendingDelete) resetProductForm(); await commitProducts(products.filter(p => p.id !== pendingDelete)); (byId('adminProducts').querySelector('button') || byId('productName')).focus(); }
     catch (error) { byId('adminStatus').textContent = error.message; }
   });
-  byId('adminModal').addEventListener('close', () => { pendingDelete = null; byId('deletePrompt').hidden = true; });
+  byId('adminModal').addEventListener('close', () => { pendingDelete = null; byId('deletePrompt').hidden = true; clearContentContext(); });
 
   // Páginas editoriais: cada registro pode ser publicado, reordenado e removido.
   const sectionLabels = { 'elas-usam': 'Elas Usam', inauguracao: 'Inauguração', sobre: 'História da Loja' };
-  let pendingContentDelete = null, retainedContentMedia = '', retainedContentType = 'auto';
+  let pendingContentDelete = null, retainedContentMedia = '', retainedContentType = 'auto', contentListSection = '';
+  function isContentSection(section) { return Object.hasOwn(sectionLabels, section); }
+  function clearContentContext() {
+    contentListSection = '';
+    const context = byId('contentSectionContext');
+    context.hidden = true; context.textContent = '';
+  }
+  function setContentContext(section) {
+    if (!isContentSection(section)) return false;
+    contentListSection = section;
+    byId('contentSection').value = section;
+    const context = byId('contentSectionContext');
+    context.textContent = 'Você está gerenciando as publicações de ' + sectionLabels[section] + '.';
+    context.hidden = false;
+    return true;
+  }
   function renderSections() {
     for (const [section, gridId, emptyId] of [['elas-usam', 'elasUsamGrid', 'elasUsamEmpty'], ['inauguracao', 'inauguracaoGrid', 'inauguracaoEmpty'], ['sobre', 'storyGallery', 'storyEmpty']]) {
       const visible = sections.filter(item => item.secao === section && item.publicado), fragment = document.createDocumentFragment();
@@ -738,7 +783,13 @@ function initBoutique() {
           media.addEventListener('error', () => { const fallback = node('p', 'field-hint', 'Esta mídia está indisponível no momento.'); media.replaceWith(fallback); }, { once: true });
           card.append(media);
         }
-        copy.append(node('h3', '', item.titulo)); if (item.descricao) copy.append(node('p', '', item.descricao)); card.append(copy); fragment.append(card);
+        copy.append(node('h3', '', item.titulo)); if (item.descricao) copy.append(node('p', '', item.descricao));
+        if (isAdmin() && (section === 'elas-usam' || section === 'inauguracao')) {
+          const edit = node('button', 'secondary-btn community-card-edit', 'Editar publicação');
+          edit.type = 'button'; edit.dataset.communityContentAction = 'edit'; edit.dataset.contentSection = section; edit.dataset.contentId = item.id;
+          edit.setAttribute('aria-label', 'Editar publicação ' + item.titulo); copy.append(edit);
+        }
+        card.append(copy); fragment.append(card);
       }
       byId(gridId).replaceChildren(fragment);
       byId(emptyId).hidden = !storeLoaded || !!visible.length || (section === 'sobre' && !!story);
@@ -747,17 +798,43 @@ function initBoutique() {
   }
   function renderAdminContent() {
     if (!isAdmin()) return;
+    const contentRows = contentListSection ? sections.filter(item => item.secao === contentListSection) : sections;
     const fragment = document.createDocumentFragment();
-    for (const item of sections) {
+    for (const item of contentRows) {
       const row = node('li', 'admin-product'), copy = node('div'), actions = node('div', 'form-actions');
       copy.append(node('h4', '', item.titulo), node('p', '', sectionLabels[item.secao] + ' · ' + (item.publicado ? 'Publicado' : 'Rascunho') + ' · Ordem ' + item.posicao));
       for (const [action, label] of [['edit', 'Editar'], ['delete', 'Excluir']]) { const button = node('button', 'secondary-btn', label); button.type = 'button'; button.dataset.contentAction = action; button.dataset.contentId = item.id; button.setAttribute('aria-label', label + ' ' + item.titulo); actions.append(button); }
       row.append(copy, actions); fragment.append(row);
     }
-    if (!sections.length) fragment.append(node('li', 'field-hint', 'Conte sua história e compartilhe os primeiros momentos da boutique.'));
+    if (!contentRows.length) fragment.append(node('li', 'field-hint', contentListSection ? 'Ainda não há publicações nesta página.' : 'Conte sua história e compartilhe os primeiros momentos da boutique.'));
     byId('adminContentList').replaceChildren(fragment);
   }
-  function resetContentForm() { byId('contentForm').reset(); byId('editingContentId').value = ''; retainedContentMedia = ''; retainedContentType = 'auto'; byId('saveContent').textContent = 'Publicar conteúdo'; byId('cancelContentEdit').hidden = true; byId('contentStatus').textContent = ''; clearFormError('contentError'); }
+  function resetContentForm(section = contentListSection) { byId('contentForm').reset(); if (isContentSection(section)) byId('contentSection').value = section; byId('editingContentId').value = ''; retainedContentMedia = ''; retainedContentType = 'auto'; byId('saveContent').textContent = 'Publicar conteúdo'; byId('cancelContentEdit').hidden = true; byId('contentStatus').textContent = ''; clearFormError('contentError'); }
+  function editContent(item) {
+    resetContentForm(item.secao); byId('editingContentId').value = item.id; byId('contentSection').value = item.secao; byId('contentTitle').value = item.titulo; byId('contentDescription').value = item.descricao; byId('contentMediaUrl').value = item.midia; retainedContentMedia = item.midia; retainedContentType = item.tipoMidia; byId('contentAlt').value = item.alt; byId('contentPosition').value = item.posicao; byId('contentPublished').checked = item.publicado; byId('saveContent').textContent = 'Salvar alterações'; byId('cancelContentEdit').hidden = false;
+  }
+  function openCommunityContentEditor(section, action, trigger, id = 0) {
+    if (!isContentSection(section) || !adminAllowed() || !setContentContext(section)) return;
+    if (action === 'edit') {
+      const item = sections.find(row => row.id === Number(id) && row.secao === section);
+      if (!item) return;
+      editContent(item);
+    } else resetContentForm(section);
+    renderAdmin(); openDialog('adminModal', trigger);
+    requestAnimationFrame(() => {
+      const panel = byId('contentForm').closest('.admin-section'), modal = byId('adminModal');
+      modal.scrollTop = Math.max(0, panel.offsetTop - 16);
+      const target = action === 'manage' ? byId('adminContentList').querySelector('button') || byId('contentTitle') : byId('contentTitle');
+      target.focus({ preventScroll: true });
+    });
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-community-content-action]');
+    if (!button) return;
+    const action = button.dataset.communityContentAction, section = button.dataset.contentSection;
+    if (!['create', 'manage', 'edit'].includes(action)) return;
+    openCommunityContentEditor(section, action, button, button.dataset.contentId);
+  });
   byId('cancelContentEdit').addEventListener('click', () => { resetContentForm(); byId('contentTitle').focus(); });
   byId('contentForm').addEventListener('submit', async event => {
     event.preventDefault(); if (!adminAllowed() || storeSaving) return;
@@ -780,7 +857,7 @@ function initBoutique() {
     const button = event.target.closest('[data-content-action]'); if (!button || !adminAllowed() || storeSaving) return;
     const item = sections.find(row => row.id === Number(button.dataset.contentId)); if (!item) return;
     if (button.dataset.contentAction === 'delete') { pendingContentDelete = item.id; byId('contentDeletePrompt').hidden = false; byId('cancelContentDelete').focus(); return; }
-    resetContentForm(); byId('editingContentId').value = item.id; byId('contentSection').value = item.secao; byId('contentTitle').value = item.titulo; byId('contentDescription').value = item.descricao; byId('contentMediaUrl').value = item.midia; retainedContentMedia = item.midia; retainedContentType = item.tipoMidia; byId('contentAlt').value = item.alt; byId('contentPosition').value = item.posicao; byId('contentPublished').checked = item.publicado; byId('saveContent').textContent = 'Salvar alterações'; byId('cancelContentEdit').hidden = false; byId('contentTitle').focus();
+    editContent(item); byId('contentTitle').focus();
   });
   byId('cancelContentDelete').addEventListener('click', () => { pendingContentDelete = null; byId('contentDeletePrompt').hidden = true; byId('contentTitle').focus(); });
   byId('confirmContentDelete').addEventListener('click', async () => {
@@ -1064,7 +1141,7 @@ function initBoutique() {
   document.addEventListener('visibilitychange', refreshOnReturn);
 
   byId('storyText').textContent = story; byId('year').textContent = new Date().getFullYear();
-  applyContent(); syncProfile(); renderProducts(); renderCart(); renderReviews(); renderSections(); renderStockFields(false); measure();
+  applyContent(); syncProfile(); renderProducts(); renderCart(); renderReviews(); renderSections(); syncRoute({ focus: editorialRoutes.has(currentHash()) }); renderStockFields(false); measure();
   dropPetals(false); dropPetals(true);
   A.subscribe(() => {
     saveProfile();

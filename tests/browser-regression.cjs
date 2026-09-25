@@ -182,7 +182,17 @@ async function main() { console.log("Iniciando verificações no navegador...");
   await reload();
 
   const browser = (callback, ...args) => evaluate("(" + callback.toString() + ")(..." + JSON.stringify(args) + ")");
-  const fresh = async (prepare) => { resetFixture(); prepare?.(fixture); await browser(() => { localStorage.clear(); sessionStorage.clear(); }); await reload(); await until("BoutiqueAuth.mode() === 'supabase'", "Supabase configurado"); };
+  const fresh = async (prepare) => { resetFixture(); prepare?.(fixture); await browser(() => { localStorage.clear(); sessionStorage.clear(); history.replaceState(null, '', location.pathname + location.search); }); await reload(); await until("BoutiqueAuth.mode() === 'supabase'", "Supabase configurado"); };
+  const goEditorial = async section => {
+    const hash = '#' + section;
+    await browser(hash => { location.hash = hash; }, hash);
+    await until("location.hash === " + JSON.stringify(hash) + " && !document.querySelector(" + JSON.stringify(hash) + ").hidden && document.querySelector('#homeView').hidden", 'vista ' + section);
+  };
+  const goHome = async () => {
+    await browser(() => { location.hash = '#inicio'; });
+    await until("!document.querySelector('#homeView').hidden && document.querySelector('#elas-usam').hidden && document.querySelector('#inauguracao').hidden", 'retorno à home');
+  };
+  const communityAction = (section, action) => '#' + section + ' [data-community-content-action="' + action + '"][data-content-section="' + section + '"]';
   const click = selector => browser(selector => { const el = document.querySelector(selector); if (!el) throw Error("Alvo inexistente: " + selector); el.click(); }, selector);
   const change = (selector, value) => browser((selector, value) => { const el = document.querySelector(selector); if (!el) throw Error("Campo inexistente: " + selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }, selector, value);
   const closeDialogs = async () => { await browser(() => document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close())); await delay(60); };
@@ -207,6 +217,31 @@ async function main() { console.log("Iniciando verificações no navegador...");
     await browser(() => { localStorage.setItem('userRole', 'admin'); localStorage.setItem('nanda-boutique-perfil-v1', JSON.stringify({ role: 'admin', email: 'usenandaboutiquee@gmail.com' })); });
     await reload(); assert.notEqual(await evaluate("BoutiqueAuth.getState().role"), "admin"); assert.equal(await evaluate("document.querySelector('#adminToggle').hidden"), true); assert.equal(await evaluate("document.querySelector('#stockAlertsToggle').hidden"), true);
     assert(fixture.calls.some(call => call.path === '/rest/v1/boutique_store' && call.method === 'GET'));
+  });
+  await check("vistas editoriais isolam a home, preservam histórico e mantêm o painel contextual", async () => {
+    await fresh(); await viewport(390);
+    assert.equal(await evaluate("document.querySelector('#homeView').contains(document.querySelector('#elas-usam')) || document.querySelector('#homeView').contains(document.querySelector('#inauguracao'))"), false);
+    await click('.store-nav a[href="#elas-usam"]'); await until("location.hash === '#elas-usam' && !document.querySelector('#elas-usam').hidden && document.querySelector('#homeView').hidden", 'Elas Usam');
+    await click('.store-nav a[href="#inauguracao"]'); await until("location.hash === '#inauguracao' && !document.querySelector('#inauguracao').hidden && document.querySelector('#homeView').hidden", 'Inauguração');
+    await browser(() => history.back()); await until("location.hash === '#elas-usam' && !document.querySelector('#elas-usam').hidden", 'histórico de Elas Usam');
+    await goHome(); await login(); await closeDialogs(); await goEditorial('elas-usam');
+    const create = communityAction('elas-usam', 'create');
+    assert.equal(await browser(selector => { const button = document.querySelector(selector); return !!button && !button.hidden && !!button.getClientRects().length; }, create), true);
+    assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), true, 'vista editorial sem rolagem horizontal no celular');
+    const actionSizes = await browser(section => [...document.querySelectorAll('#' + section + ' [data-community-content-action]')].map(button => { const rect = button.getBoundingClientRect(); return { width: rect.width, height: rect.height }; }), 'elas-usam');
+    assert(actionSizes.every(action => action.width >= 43.9 && action.height >= 43.9), 'atalhos editoriais confortáveis no celular');
+    await click(create); await until("document.querySelector('#adminModal').open && document.querySelector('#contentSection').value === 'elas-usam'", 'formulário editorial contextual');
+    await change('#contentTitle', 'Look completo'); await change('#contentDescription', 'Foto sem recorte.'); await change('#contentMediaUrl', './img/look-listras-rosa-1.jpg'); await change('#contentAlt', 'Look completo da boutique'); await change('#contentPosition', '1'); await submit('#contentForm');
+    await until("document.querySelector('#contentStatus').textContent.toLowerCase().includes('sucesso')", 'publicação editorial salva');
+    assert(fixture.store.sections.some(item => item.secao === 'elas-usam' && item.titulo === 'Look completo'));
+    await closeDialogs(); await until("!!document.querySelector('#elas-usam .community-card img')", 'imagem editorial visível');
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('#elas-usam .community-card img')).objectFit"), 'contain');
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.product-card .media-slide img')).objectFit"), 'contain');
+    await click(communityAction('elas-usam', 'edit')); await until("document.querySelector('#adminModal').open && document.querySelector('#contentTitle').value === 'Look completo'", 'edição direta da publicação');
+    await closeDialogs(); await goEditorial('inauguracao'); await click(communityAction('inauguracao', 'manage'));
+    await until("document.querySelector('#adminModal').open && document.querySelector('#contentSection').value === 'inauguracao'", 'gestão contextual');
+    assert.match(await evaluate("document.querySelector('#adminContentList').textContent"), /Ainda não há publicações nesta página/);
+    await closeDialogs(); await viewport(1440);
   });
   await check("cliente recebe saudação, sessão restaurada e cadastro solicita confirmação", async () => {
     await fresh(); await login('cliente@example.com');

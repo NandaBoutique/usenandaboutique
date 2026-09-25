@@ -55,7 +55,7 @@
       </div>
       <p class="customer-greeting" id="customerGreeting" role="status" aria-live="polite" hidden></p>
       <nav class="store-nav" aria-label="Navegação principal">
-        <a href="#inicio">Início</a><a href="#colecao">Coleção</a><a href="#elas-usam">Elas Usam</a><a href="#inauguracao">Inauguração</a><a href="#sobre">Nossa História</a><a href="#avaliacoes">Avaliações</a><a href="#informacoes">Informações</a><a href="#contatos">Contatos</a>
+        <a href="#inicio">Início</a><a href="#colecao">Coleção</a><a class="nav-editorial-link" href="#elas-usam" data-route-link="elas-usam">Elas Usam</a><a class="nav-editorial-link" href="#inauguracao" data-route-link="inauguracao">Inauguração</a><a href="#sobre">Nossa História</a><a href="#avaliacoes">Avaliações</a><a href="#informacoes">Informações</a><a href="#contatos">Contatos</a>
       </nav>
       <button class="shopping-bag bag-highlight" id="shoppingBag" type="button" aria-label="Abrir sacola: 0 itens" aria-controls="checkoutModal" aria-haspopup="dialog">
         <img src="./img/sacola-carrinho.png" alt="" width="60" height="66"><span class="bag-label">Sacola</span><span id="bagCount" class="bag-count">0</span>
@@ -64,6 +64,7 @@
   </header>
 
   <main class="container" id="conteudo">
+    <div id="homeView" data-route-view="home">
     <section class="hero" aria-labelledby="heroTitle">
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> UM NOVO LOOK. O SEU JEITO.</p>
@@ -104,17 +105,6 @@
       <noscript><p class="noscript-message">Ative o JavaScript para explorar a coleção. Você também pode falar com a loja pelo <a href="https://wa.me/5511989423365">WhatsApp</a>.</p></noscript>
       <aside class="catalog-help" aria-label="Atendimento da loja"><span>Uma ajudinha para escolher seu próximo look?</span><a href="https://wa.me/5511989423365" target="_blank" rel="noopener noreferrer"><img src="./img/icon-whatsapp.png" alt="" width="24" height="24">Dúvidas? Fale com a loja <span aria-hidden="true">↗</span></a></aside>
     </section>
-    <!-- Publicações administradas no painel, sem conteúdo fictício. -->
-    <section class="community-section" id="elas-usam" aria-labelledby="elasUsamTitle">
-      <div class="section-heading"><div><p class="eyebrow">INSPIRAÇÃO QUE VEM DE VOCÊ</p><h2 id="elasUsamTitle" data-edit-key="elasUsamTitle" data-edit-label="Título de Elas Usam" data-edit-type="text">Elas Usam</h2><p data-edit-key="elasUsamDescription" data-edit-label="Apresentação de Elas Usam" data-edit-type="text">Mulheres reais, looks especiais e o seu jeito de ser.</p></div></div>
-      <div class="community-grid" id="elasUsamGrid"></div>
-      <div class="collection-empty community-empty" id="elasUsamEmpty"><span aria-hidden="true">♡</span><h3>Novidades chegando em breve!</h3><p>Um espaço para celebrar os looks e as histórias de quem veste Nanda.</p></div>
-    </section>
-    <section class="community-section inauguration-section" id="inauguracao" aria-labelledby="inauguracaoTitle">
-      <div class="section-heading"><div><p class="eyebrow">O COMEÇO DE UM SONHO</p><h2 id="inauguracaoTitle" data-edit-key="inauguracaoTitle" data-edit-label="Título de Inauguração" data-edit-type="text">Inauguração</h2><p data-edit-key="inauguracaoDescription" data-edit-label="Apresentação de Inauguração" data-edit-type="text">Cada encontro faz parte da nossa história.</p></div></div>
-      <div class="community-grid" id="inauguracaoGrid"></div>
-      <div class="collection-empty community-empty" id="inauguracaoEmpty"><span aria-hidden="true">✧</span><h3>Novidades chegando em breve!</h3><p>Em breve, compartilharemos por aqui os momentos desse dia especial.</p></div>
-    </section>
     <section class="about" id="sobre" aria-labelledby="aboutTitle">
       <div class="about-brand"><img src="./img/logo-nanda.jpg" alt="Nanda Boutique" width="140" height="140" loading="lazy" data-edit-key="storyImage" data-edit-label="Foto da nossa história" data-edit-type="image"><p data-edit-key="storyCaption" data-edit-label="Legenda da nossa história" data-edit-type="text">Um sonho que virou boutique.</p></div>
       <div><p class="eyebrow">MUITO PRAZER, SOMOS A NANDA BOUTIQUE</p><h2 id="aboutTitle" data-edit-key="storyTitle" data-edit-label="Título da nossa história" data-edit-type="text">Mais do que vestir.<br>É sobre se sentir especial.</h2><p id="storyText" data-edit-key="story" data-edit-label="Nossa história" data-edit-type="text">Após 23 anos no mercado financeiro, a Nanda Boutique nasceu de um sonho. Nosso propósito é acolher, ouvir histórias e fazer com que cada mulher se sinta especial e linda.</p><p class="about-signature">Bonita. Sempre.</p></div>
@@ -136,6 +126,21 @@
         <article class="info-card"><div class="info-art info-art-accessories"><img src="./img/cintos-colecao-1.jpg" alt="" width="587" height="801" loading="lazy" data-edit-key="paymentImage" data-edit-label="Foto de pagamento" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">03 / DO SEU JEITO</span><h3>Pagamento facilitado</h3><p id="paymentText" data-edit-key="payment" data-edit-label="Informações de pagamento" data-edit-type="text">Pix, dinheiro, cartão de débito ou crédito.</p></div></article>
         <article class="info-card" id="frete"><div class="info-art info-art-bag"><img src="./img/sacola-carrinho.png" alt="" width="500" height="500" loading="lazy" data-edit-key="deliveryImage" data-edit-label="Foto das entregas" data-edit-type="image"></div><div class="info-copy"><span class="info-number" aria-hidden="true">04 / ATÉ A SUA CASA</span><h3>Entrega com carinho</h3><p id="deliveryText" data-edit-key="delivery" data-edit-label="Entregas e frete" data-edit-type="text">Osasco: frete fixo de R$ 10,00.<br>São Paulo e demais estados: valor a consultar.</p></div></article>
       </div>
+    </section>
+    </div>
+
+    <!-- Vistas editoriais dedicadas: as galerias não alongam a home no celular. -->
+    <section class="editorial-view" id="elas-usam" data-route-view="elas-usam" aria-labelledby="elasUsamTitle" tabindex="-1" hidden>
+      <header class="editorial-view-header"><div><p class="eyebrow">INSPIRAÇÃO QUE VEM DE VOCÊ</p><h1 id="elasUsamTitle" data-edit-key="elasUsamTitle" data-edit-label="Título de Elas Usam" data-edit-type="text">Elas Usam</h1><p data-edit-key="elasUsamDescription" data-edit-label="Apresentação de Elas Usam" data-edit-type="text">Mulheres reais, looks especiais e o seu jeito de ser.</p></div><a class="secondary-btn editorial-back" href="#inicio">← Voltar ao início</a></header>
+      <aside class="community-admin-actions" data-community-admin="elas-usam" aria-label="Edição de Elas Usam" hidden><div><strong>Modo de edição ativo</strong><p>Adicione ou organize as fotos e vídeos de Elas Usam.</p></div><div class="form-actions"><button class="primary-btn" type="button" data-community-content-action="create" data-content-section="elas-usam">Adicionar foto ou vídeo</button><button class="secondary-btn" type="button" data-community-content-action="manage" data-content-section="elas-usam">Gerenciar publicações</button></div></aside>
+      <div class="community-grid" id="elasUsamGrid"></div>
+      <div class="collection-empty community-empty" id="elasUsamEmpty"><span aria-hidden="true">♡</span><h3>Novidades chegando em breve!</h3><p>Um espaço para celebrar os looks e as histórias de quem veste Nanda.</p></div>
+    </section>
+    <section class="editorial-view" id="inauguracao" data-route-view="inauguracao" aria-labelledby="inauguracaoTitle" tabindex="-1" hidden>
+      <header class="editorial-view-header"><div><p class="eyebrow">O COMEÇO DE UM SONHO</p><h1 id="inauguracaoTitle" data-edit-key="inauguracaoTitle" data-edit-label="Título de Inauguração" data-edit-type="text">Inauguração</h1><p data-edit-key="inauguracaoDescription" data-edit-label="Apresentação de Inauguração" data-edit-type="text">Cada encontro faz parte da nossa história.</p></div><a class="secondary-btn editorial-back" href="#inicio">← Voltar ao início</a></header>
+      <aside class="community-admin-actions" data-community-admin="inauguracao" aria-label="Edição de Inauguração" hidden><div><strong>Modo de edição ativo</strong><p>Adicione ou organize as fotos e vídeos da inauguração.</p></div><div class="form-actions"><button class="primary-btn" type="button" data-community-content-action="create" data-content-section="inauguracao">Adicionar foto ou vídeo</button><button class="secondary-btn" type="button" data-community-content-action="manage" data-content-section="inauguracao">Gerenciar publicações</button></div></aside>
+      <div class="community-grid" id="inauguracaoGrid"></div>
+      <div class="collection-empty community-empty" id="inauguracaoEmpty"><span aria-hidden="true">✧</span><h3>Novidades chegando em breve!</h3><p>Em breve, compartilharemos por aqui os momentos desse dia especial.</p></div>
     </section>
   </main>
   <footer class="footer" id="contatos" aria-labelledby="contactTitle">
@@ -191,7 +196,7 @@
       </section>
       <section class="admin-section" aria-labelledby="manageTitle"><h3 id="manageTitle">Gerenciar coleção</h3><ul class="admin-products" id="adminProducts"></ul><div class="delete-prompt" id="deletePrompt" hidden><p id="deletePromptText"></p><div class="form-actions"><button class="primary-btn" id="confirmDelete" type="button">Excluir produto</button><button class="secondary-btn" id="cancelDelete" type="button">Manter produto</button></div></div></section>
       <section class="admin-section" aria-labelledby="contentFormTitle">
-        <h3 id="contentFormTitle">Elas Usam, Inauguração e História</h3><p class="field-hint">Crie publicações com fotos, vídeos e textos. Você pode editar, ocultar e excluir cada publicação.</p>
+        <h3 id="contentFormTitle">Elas Usam, Inauguração e História</h3><p class="field-hint" id="contentSectionContext" hidden></p><p class="field-hint">Crie publicações com fotos, vídeos e textos. Você pode editar, ocultar e excluir cada publicação.</p>
         <form id="contentForm" class="form-grid"><input id="editingContentId" type="hidden">
           <div class="field"><label for="contentSection">Publicar em</label><select id="contentSection"><option value="elas-usam">Elas Usam</option><option value="inauguracao">Inauguração</option><option value="sobre">História da loja</option></select></div>
           <div class="field"><label for="contentPosition">Ordem na página</label><input id="contentPosition" type="number" inputmode="numeric" min="0" max="9999" step="1" value="0" required></div>
